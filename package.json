@@ -1,5 +1,11 @@
 {
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.22.3",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.15.0"
@@ -8,5 +14,24 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
+  },
+  "name": "projeto_sindrome_xfragil",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Vit0rHJ/Projeto_Sindrome_Xfragil.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Vit0rHJ/Projeto_Sindrome_Xfragil/issues"
+  },
+  "homepage": "https://github.com/Vit0rHJ/Projeto_Sindrome_Xfragil#readme",
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

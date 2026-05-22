@@ -1,25 +1,66 @@
-const bcscrypt = require ('bcrypt');
-const jwt = require('jsonwebtoken');
-const db = require('../config/db');
+const bcrypt = require('bcryptjs');
+const jwt    = require('jsonwebtoken');
+const pool   = require('../config/db');
 
-async function login(req, res) {
-  const { email, senha } = req.body
-const [rows] = await db.query
-('SELECT * FROM usuarios WHERE email = ?', [email])
-if (!rows.length) {
-  return res.status(401).json({ error: 'Usuario não encontrado' })
-  const ok = await bcscrypt.compare(senha, rows[0].senha)
-  if (!ok) {
-    return res.status(401).json({ error: 'Senha incorreta' })
+// ---------------------------------------------------------------
+// LOGIN
+// Recebe email e senha, verifica no banco e devolve um token
+// ---------------------------------------------------------------
+const login = async (req, res) => {
+    const { email, senha } = req.body;
 
-    const token = jwt.sign(
-        { id: rows[0].id, perfil: rows[0].perfil },
-        process.env.JWT_SECRET,
-        { expiresIn: '8h' }
-    )
-    res.json({toke, nome: row[0].nome, perfil: rows[0].perfil }) 
- }
-module.exports = {login}  
-}
-}
+    // 1. Verifica se os campos foram enviados
+    if (!email || !senha) {
+        return res.status(400).json({ mensagem: 'Email e senha são obrigatórios.' });
+    }
 
+    try {
+        // 2. Busca o usuário no banco pelo email
+        const [rows] = await pool.query(
+            'SELECT * FROM usuarios WHERE email = ?',
+            [email]
+        );
+
+        // 3. Se não encontrou nenhum usuário com esse email
+        if (rows.length === 0) {
+            return res.status(401).json({ mensagem: 'Email ou senha incorretos.' });
+        }
+
+        const usuario = rows[0];
+
+        // 4. Compara a senha digitada com o hash salvo no banco
+        const senhaCorreta = await bcrypt.compare(senha, usuario.senha_hash);
+
+        if (!senhaCorreta) {
+            return res.status(401).json({ mensagem: 'Email ou senha incorretos.' });
+        }
+
+        // 5. Gera o token JWT com os dados do usuário
+        const token = jwt.sign(
+            {
+                id:     usuario.id,
+                nome:   usuario.nome,
+                perfil: usuario.perfil
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_EXPIRES_IN }
+        );
+
+        // 6. Devolve o token e os dados básicos do usuário
+        return res.status(200).json({
+            token,
+            usuario: {
+                id:     usuario.id,
+                nome:   usuario.nome,
+                email:  usuario.email,
+                perfil: usuario.perfil
+            }
+        });
+
+    } catch (erro) {
+        console.error('Erro no login:', erro);
+        return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
+    }
+};
+
+module.exports = { login };

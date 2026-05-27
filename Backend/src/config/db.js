@@ -13,3 +13,4 @@ const pool = mysql.createPool({ // cria uma pool de conexões com o banco de dad
 });
 
 module.exports = pool; //  exporta a pool para que a gente possa usar ela em outros arquivos e fazer as queries no banco de dados
+ 

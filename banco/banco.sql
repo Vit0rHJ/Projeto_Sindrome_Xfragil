@@ -165,15 +165,12 @@ JOIN pacientes p ON p.id = c.paciente_id
 JOIN usuarios  m ON m.id = c.medico_id;
 
 
--- TRIGGERS: cálculo automático do score e do encaminhamento
--- Sempre que um checklist for inserido ou atualizado,
--- o banco recalcula o score_total e define o encaminhamento.
--- Isso evita que o backend precise fazer essa conta.
+-- TRIGGERS: cálculo automático do score e do encaminhamento, sempre que um checklist for inserido ou atualizado,o banco recalcula o score_total e define o encaminhamento isso evita que o backend precise fazer essa conta.
 
 
 DELIMITER $$
 
--- ---------- INSERT ----------
+--insert
 CREATE TRIGGER trg_calcular_score_insert
 BEFORE INSERT ON checklist
 FOR EACH ROW
@@ -200,7 +197,7 @@ BEGIN
     END;
 END $$
 
--- ---------- UPDATE ----------
+--update
 CREATE TRIGGER trg_calcular_score_update
 BEFORE UPDATE ON checklist
 FOR EACH ROW

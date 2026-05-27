@@ -3,7 +3,8 @@ const jwt    = require('jsonwebtoken');  // o jwt é uma biblioteca para criar e
 const pool   = require('../config/db');// importa a pool de conexões com o banco pra fazer as queries e verificar se o usuario existe e se a senha ta certa
 
 
-//status http 400 é pra dados faltando
+//status http 
+// 400 é pra dados faltando
 //401 nao autorizado
 //500 erro no servidor
 //200 sucesso
@@ -18,8 +19,7 @@ const login = async (req, res) => {
 
     try {
         //busca o usuário no banco pelo email
-        const [rows] = await pool.query('SELECT * FROM usuarios WHERE email = ?',
-            [email] // executa um querry no banco usando o ? de placeholder para evitar sql injection
+        const [rows] = await pool.query('SELECT * FROM usuarios WHERE email = ?', [email] // executa um querry no banco usando o ? de placeholder para evitar sql injection
         );
 
         //se não encontrou nenhum usuário com esse email
@@ -35,7 +35,7 @@ const login = async (req, res) => {
             return res.status(401).json({ mensagem: 'Email ou senha incorretos.' });
         }
 
-        // gera o token JWT com os dados do usuário, pra quando ele chegar na proxima requisicao vamos saber se é admin ou nedico, sem precisar acessar o banco
+        // gera o token JWT com os dados do usuário, pra quando ele chegar na proxima requisicao vamos saber se é admin ou medico, sem precisar acessar o banco
         const token = jwt.sign( 
             {
                 id:     usuario.id,

@@ -1,12 +1,12 @@
 const express = require('express'); // importa o framework express pra criar o servidor e a API
 //CORS é uma politica de segurança dos navegadores que bloqueia requisições de origens diferentes, como o frontend rodando na porta 3000 e o backend na 3001, com o cors a gente vai conseguir liberar isso e permitir que o frontend consiga se comunicar com o backend sem problemas
-const cors    = require('cors'); // libera a porta 3000 ad o reactpara fazer requisicoes pro backend que é a porta 3001, sem isso ia ser bloqueado por causa do cors
+const cors    = require('cors'); // libera a porta 3000 ad o react para fazer requisicoes pro backend que é a porta 3001, sem isso ia ser bloqueado por causa do cors
 
 const app = express();
 
 app.use(cors({ origin: 'http://localhost:3000' }));
 app.use(express.json()); // pro servidor conseguir ler em json, sem isdso quando o react mandasee os dados o back nao ia conseguir ler
-
+app.use('/api/auth', require('./routes/auth')); //todas as rotas de autenticacao vao começar com /api/auth, e a gente importa as rotas do arquivo auth.js
 const pool = require('./config/db');
 
 pool.getConnection() //testa se a conexao com o banco esta funcionando

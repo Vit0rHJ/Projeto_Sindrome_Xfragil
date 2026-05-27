@@ -15,6 +15,8 @@ meddlewares/auth.js: ele vai ser responsavel pela seguranca do sistema, toda rot
 
 routes/auth.js: define o endereço /api/auth/login e conecta a ele ao controller do login
 
+PARA REALIZAR TESTES DO BACK: estamos utilizando o Postman
+
 A FAZER BACKEND:
 Testar o login com uma ferramenta chamada Insomnia — antes de partir pro frontend, precisamos garantir que o backend está respondendo certo.
 Controller e rota de usuários — onde o admin cadastra os médicos.

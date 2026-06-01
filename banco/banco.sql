@@ -231,3 +231,10 @@ DELIMITER ;
 --   SHOW TABLES;
 --   DESCRIBE usuarios;
 --   SELECT * FROM usuarios;
+
+
+USE psinx;
+UPDATE usuarios 
+SET senha_hash = '$2b$10$Gp.j.7OTTYdk6IkfoxiPiu.2rqj7hU8fJSu1lCgdG.VpLlbhS1AI2' 
+WHERE email = 'admin@gmail.com';
+SELECT * FROM usuarios;

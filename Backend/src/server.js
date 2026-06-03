@@ -10,6 +10,7 @@ app.use("/api/auth", require("./routes/auth")); //todas as rotas de autenticacao
 app.use("/api/usuarios", require("./routes/usuarios")); //todas as rotas de usuarios vao começar com /api/usuarios, e a gente importa as rotas do arquivo usuarios.js
 app.use("/api/pacientes", require("./routes/pacientes")); //todas as rotas de pacientes vao começar com /api/pacientes, e a gente importa as rotas do arquivo pacientes.js
 app.use("/api/consultas", require("./routes/consultas")); //todas as rotas de consultas vao começar com /api/consultas, e a gente importa as rotas do arquivo consultas.js
+app.use('/api/checklist', require('./routes/checklist'));//todas as rotas de checklist vao começar com /api/checklist, e a gente importa as rotas do arquivo checklist.js, a gente vai criar as rotas de checklist depois, mas a ideia é a mesma, a gente cria um arquivo pra cada grupo de rotas, e importa elas aqui, e depois usa elas com o app.use, assim a gente organiza melhor o código, cada rota vai ficar em um arquivo diferente
 //a gente vai criar as rotas de pacientes e consultas depois, mas a ideia é a mesma, a gente cria um arquivo pra cada grupo de rotas, e importa elas aqui, e depois usa elas com o app.use, assim a gente organiza melhor o código, cada rota vai ficar em um arquivo diferente
 const pool = require("./config/db");
 

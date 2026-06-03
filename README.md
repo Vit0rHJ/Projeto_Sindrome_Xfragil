@@ -1,4 +1,5 @@
 BACKEND:
+OBS: secretaria, recebe checklist do responsavel, e tem acesso a dados gerais
 OBS IMPORTANTES PARA O PROJETO:
 admin ve todos os pacintes e consultas/ medico ve apenas seus proprios pacintes/ e o score do primeiro checklist feito pelo vresponsavel nao aparece para ele.
 os triggers do banco calculam o score automaticamnte no INSERT e UPDATE.
@@ -57,3 +58,106 @@ e agora tbm relacionado aos novos reuesitos, eu adicionei compos com base no for
 FRONTEND:
 
 A FAZER FRONTEND:
+
+
+TESTES POSTMAN:
+Passo 1 — Login para pegar o token do médico:
+POST http://localhost:3001/api/auth/login
+Body:
+json
+{
+    "email": "medico@gmail.com",
+    "senha": "medico123"
+}
+Passo 2 — Criar uma consulta:
+POST http://localhost:3001/api/consultas
+Authorization → Bearer Token → cola o token
+Body:
+json
+{
+    "paciente_id": 1,
+    "data_consulta": "2026-06-10",
+    "observacoes": "Primeira consulta"
+}
+Passo 3 — Listar consultas:
+GET http://localhost:3001/api/consultas
+Authorization → Bearer Token → cola o token
+Sem body
+
+
+POST http://localhost:3001/api/auth/login
+Body:
+json
+{
+    "email": "medico@gmail.com",
+    "senha": "medico123"
+}
+
+
+MEDICO:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwibm9tZSI6IkRyLiBUZXN0ZSIsInBlcmZpbCI6Im1lZGljbyIsImlhdCI6MTc4MDQwODYxOCwiZXhwIjoxNzgwNDM3NDE4fQ.ZBjX_i-LBBZ3i3PTWuULpOp1x-HgSHdobQDVdIDjzek
+ADM:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tZSI6IkFkbWluaXN0cmFkb3IiLCJwZXJmaWwiOiJhZG1pbiIsImlhdCI6MTc4MDQwODcyMSwiZXhwIjoxNzgwNDM3NTIxfQ.3WRIcxfoHyqkfaqaKP70KS2AFea1QNcgGlS31sINoUg
+
+Faz login como admin primeiro:
+POST http://localhost:3001/api/auth/login
+Body:
+json
+
+Pega o token e cadastra o médico de novo:
+POST http://localhost:3001/api/usuarios
+Authorization → Bearer Token → token do admin
+Body:
+json
+{
+    "nome": "Dr. Teste",
+    "email": "medico@gmail.com",
+    "senha": "medico123",
+    "crm": "12345",
+    "especialidade": "Neurologia"
+}
+
+Agora faz login como médico para pegar o token dele:
+POST http://localhost:3001/api/auth/login
+Body:
+json
+{
+    "email": "medico@gmail.com",
+    "senha": "medico123"
+}
+Pega o token e cadastra um paciente de teste:
+POST http://localhost:3001/api/pacientes
+Authorization → Bearer Token → token do médico
+Body:
+json
+{
+    "nome": "Paciente Teste",
+    "cpf": "123.456.789-00",
+    "email": "paciente@gmail.com",
+    "telefone": "41999999999",
+    "data_nascimento": "2015-03-10",
+    "nome_responsavel": "Responsável Teste",
+    "cpf_responsavel": "987.654.321-00",
+    "telefone_responsavel": "41988888888"
+}
+
+
+Agora cria a consulta:
+POST http://localhost:3001/api/consultas
+Authorization → Bearer Token → token do médico
+Body:
+json
+{
+    "paciente_id": 1,
+    "data_consulta": "2026-06-10",
+    "observacoes": "Primeira consulta"
+}
+
+Listar consultas:
+GET http://localhost:3001/api/consultas
+Authorization → Bearer Token → token do médico
+Sem body
+Atualizar status:
+PATCH http://localhost:3001/api/consultas/1
+Authorization → Bearer Token → token do médico
+Bo

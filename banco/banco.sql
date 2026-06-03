@@ -1,3 +1,4 @@
+-- eu, vc ainda tenho que comentar o banco nao se esqueça se nao vc vai esquecendo como ele ta funcionando
 DROP DATABASE IF EXISTS psinx;
 CREATE DATABASE psinx
     CHARACTER SET utf8mb4

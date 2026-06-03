@@ -27,8 +27,16 @@ const apenasAdmin = (req, res, next) => {
     }
     next();
 };
+// middleware novo que vai liberar acesso para admin e secretaria 
+// o && vamo usar porque precisamos que os 2 sejam falsos para bloquear eles, pq se algum deles for verdadeiro vai passar
+const adminOuSecretaria = (req, res, next) => {
+    if (req.usuario.perfil !== 'admin' && req.usuario.perfil !== 'secretaria') {
+        return res.status(403).json({ mensagem: 'Acesso restrito a administradores e secretaria.' });
+    }
+    next();
+};
 
-module.exports = { autenticar, apenasAdmin };
+module.exports = { autenticar, apenasAdmin, adminOuSecretaria };
 // as rotas devem ficar +- assim
 //rota do admin router.post('/rota', autenticar, apenasAdmin, controller);
 //e rota de qualquer usuario router.get('/rota', autenticar, controller);

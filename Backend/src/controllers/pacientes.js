@@ -57,7 +57,7 @@ const listarPacientes = async (req, res) => {
     try {
         let pacientes;
 
-        if (req.usuario.perfil === 'admin') { // vai verificar se o perfil esta dentro do token, se for o token de admin vai buscar todos os pacientes, se for o token do medico vai filtrar so os dele
+        if (req.usuario.perfil === 'admin' || req.usuario.perfil === 'secretaria') { // vai verificar se o perfil esta dentro do token, se for o token de admin ou secretaria vai buscar todos os pacientes, se for o token do medico vai filtrar so os dele
             [pacientes] = await pool.query(
                 'SELECT id, nome, cpf, email, telefone, data_nascimento, cidade, estado FROM pacientes'
             );

@@ -43,7 +43,7 @@ const listarConsultas = async (req, res) => {
   try {
     let consultas;
 
-    if (req.usuario.perfil === "admin") {
+    if (req.usuario.perfil === "admin" || req.usuario.perfil === "secretaria") {
       [consultas] = await pool.query("SELECT * FROM vw_consulta_completa");//vamo faze uma viw para nao ter que fazer um joi garnde no codigo, a view ja entrega os dados do paciente e do medico junto com a consulta, entao fica mais facil de trabalhar com isso no back e no front, a view é tipo uma tabela virtual que a gente cria no banco de dados, ela nao armazena os dados, ela so faz uma consulta e entrega o resultado como se fosse uma tabela, entao a gente pode criar uma view que junta os dados das consultas, dos pacientes e dos medicos, dai quando a gente fizer uma consulta nessa view, ela ja vai entregar tudo juntoar as consultas, dai quando for um admin ele lista todas as consultas, e quando for um medico ele lista so as consultas dele, usando o id do medico que ta no token pra filtrar as consultas na view
     } else {
       [consultas] = await pool.query(

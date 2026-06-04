@@ -10,9 +10,10 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/cadastro-profissional" element={<Cadastro />} />
+        <Route path="/login" element={<Login />} />
         <Route element={<Layout />}>
           <Route path="/home" element={<Home />} />
+          <Route path="/cadastro-profissional" element={<Cadastro />} />
           <Route path="/checklist" element={<Checklist />} />
         </Route>
       </Routes>

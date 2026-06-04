@@ -1,139 +1,333 @@
-export function Home() {
-  const cards = [
-    {
-      label: "Pacientes Cadastrados", value: "128",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-          <circle cx="9" cy="7" r="4"/>
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
-        </svg>
-      ),
-      bg: "linear-gradient(135deg, #1448a8, #2563eb)",
-    },
-    {
-      label: "Consultas Este Mês", value: "34",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-          <rect x="3" y="4" width="18" height="18" rx="2"/>
-          <line x1="16" y1="2" x2="16" y2="6"/>
-          <line x1="8" y1="2" x2="8" y2="6"/>
-          <line x1="3" y1="10" x2="21" y2="10"/>
-        </svg>
-      ),
-      bg: "linear-gradient(135deg, #0369a1, #0ea5e9)",
-    },
-    {
-      label: "Checklists Pendentes", value: "7",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-          <path d="M9 11l3 3L22 4"/>
-          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-        </svg>
-      ),
-      bg: "linear-gradient(135deg, #0f766e, #14b8a6)",
-    },
-    {
-      label: "Profissionais Ativos", value: "12",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-          <path d="M12 2a4 4 0 0 1 4 4 4 4 0 0 1-4 4 4 4 0 0 1-4-4 4 4 0 0 1 4-4"/>
-          <path d="M3 20c0-4 4-7 9-7s9 3 9 7"/>
-          <path d="M16 11l1.5 1.5L20 10"/>
-        </svg>
-      ),
-      bg: "linear-gradient(135deg, #7c3aed, #a78bfa)",
-    },
-  ];
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
-  const recentActivities = [
-    { time: "09:30", paciente: "Ana Paula Ferreira", acao: "Checklist de consulta concluído", tipo: "checklist" },
-    { time: "10:15", paciente: "Carlos Eduardo Lima", acao: "Novo cadastro realizado", tipo: "cadastro" },
-    { time: "11:00", paciente: "Beatriz Santos", acao: "Consulta agendada", tipo: "consulta" },
-    { time: "13:45", paciente: "Rafael Oliveira", acao: "Checklist de consulta concluído", tipo: "checklist" },
-    { time: "15:20", paciente: "Mariana Costa", acao: "Novo cadastro realizado", tipo: "cadastro" },
-  ];
+const API = "http://localhost:3001";
+const authHeaders = () => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${localStorage.getItem("token")}`,
+});
 
-  const tipoColor = {
-    checklist: { bg: "#dbeafe", color: "#1448a8" },
-    cadastro:  { bg: "#dcfce7", color: "#166534" },
-    consulta:  { bg: "#fef9c3", color: "#854d0e" },
-  };
+function getUserFromToken() {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) return { nome: "Médico", perfil: "medico" };
+    return JSON.parse(atob(token.split(".")[1]));
+  } catch (_) {
+    return { nome: "Médico", perfil: "medico" };
+  }
+}
 
+function StatCard({ label, value, icon, color }) {
   return (
-    <div style={styles.wrapper}>
-      {/* Header */}
-      <div style={styles.header}>
+    <div style={{ ...cardStyles.card, borderTop: `3px solid ${color}` }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <h1 style={styles.title}>Painel Principal</h1>
-          <p style={styles.subtitle}>Bem-vindo(a) ao sistema de gestão clínica</p>
+          <p style={cardStyles.label}>{label}</p>
+          <p style={cardStyles.value}>{value}</p>
         </div>
-        <div style={styles.dateBadge}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
-            <rect x="3" y="4" width="18" height="18" rx="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
-          {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
-        </div>
-      </div>
-
-      {/* Cards */}
-      <div style={styles.cardsGrid}>
-        {cards.map((c) => (
-          <div key={c.label} style={styles.card}>
-            <div style={{ ...styles.cardIcon, background: c.bg }}>{c.icon}</div>
-            <div>
-              <div style={styles.cardValue}>{c.value}</div>
-              <div style={styles.cardLabel}>{c.label}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Atividades recentes */}
-      <div style={styles.section}>
-        <h2 style={styles.sectionTitle}>Atividades Recentes</h2>
-        <div style={styles.activityList}>
-          {recentActivities.map((a, i) => (
-            <div key={i} style={styles.activityItem}>
-              <span style={styles.activityTime}>{a.time}</span>
-              <div style={styles.activityDot} />
-              <div style={styles.activityContent}>
-                <span style={styles.activityPaciente}>{a.paciente}</span>
-                <span style={styles.activityAcao}>{a.acao}</span>
-              </div>
-              <span style={{ ...styles.activityTag, background: tipoColor[a.tipo].bg, color: tipoColor[a.tipo].color }}>
-                {a.tipo}
-              </span>
-            </div>
-          ))}
+        <div style={{ ...cardStyles.iconBox, background: `${color}18` }}>
+          <span style={{ color }}>{icon}</span>
         </div>
       </div>
     </div>
   );
 }
 
+const cardStyles = {
+  card: {
+    background: "white",
+    borderRadius: "14px",
+    padding: "20px 24px",
+    boxShadow: "0 2px 12px rgba(20,72,168,0.06)",
+    border: "1px solid #e8f0fe",
+  },
+  label: { fontSize: "13px", color: "#64748b", margin: "0 0 6px 0", fontWeight: 500 },
+  value: { fontSize: "28px", fontWeight: 700, color: "#0a2560", margin: 0 },
+  iconBox: {
+    width: "40px", height: "40px", borderRadius: "10px",
+    display: "flex", alignItems: "center", justifyContent: "center",
+  },
+};
+
+const statusConfig = {
+  pendente: { label: "Pendente", bg: "#fff7ed", color: "#ea580c", border: "#fed7aa" },
+  concluida: { label: "Concluída", bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0" },
+  cancelada: { label: "Cancelada", bg: "#fff1f2", color: "#e11d48", border: "#fecdd3" },
+};
+
+export function Home() {
+  const [consultas, setConsultas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const user = getUserFromToken();
+
+  useEffect(() => {
+    fetch(`${API}/api/consultas`, { headers: authHeaders() })
+      .then(r => r.json())
+      .then(data => setConsultas(Array.isArray(data) ? data : []))
+      .catch(() => setConsultas([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const pendentes = consultas.filter(c => c.status === "pendente");
+  const concluidas = consultas.filter(c => c.status === "concluida");
+
+  return (
+    <div style={styles.page}>
+      {/* Header */}
+      <div style={styles.header}>
+        <div>
+          <h1 style={styles.title}>
+            Olá, {user.nome?.split(" ")[0] || "Médico"} 👋
+          </h1>
+          <p style={styles.subtitle}>
+            {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          </p>
+        </div>
+        <button
+          onClick={() => navigate("/checklist")}
+          style={styles.newBtn}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Nova Consulta
+        </button>
+      </div>
+
+      {/* Stats */}
+      <div style={styles.statsGrid}>
+        <StatCard
+          label="Total de Consultas"
+          value={consultas.length}
+          color="#1448a8"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
+        />
+        <StatCard
+          label="Pendentes"
+          value={pendentes.length}
+          color="#ea580c"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+        />
+        <StatCard
+          label="Concluídas"
+          value={concluidas.length}
+          color="#16a34a"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
+        />
+      </div>
+
+      {/* Consultas Pendentes */}
+      <div style={styles.section}>
+        <div style={styles.sectionHeader}>
+          <h2 style={styles.sectionTitle}>Consultas Pendentes</h2>
+          {pendentes.length > 0 && (
+            <span style={styles.badge}>{pendentes.length}</span>
+          )}
+        </div>
+
+        {loading ? (
+          <div style={styles.emptyState}>
+            <p style={{ color: "#94a3b8" }}>Carregando...</p>
+          </div>
+        ) : pendentes.length === 0 ? (
+          <div style={styles.emptyState}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <p style={{ color: "#94a3b8", margin: "12px 0 0 0" }}>Nenhuma consulta pendente</p>
+          </div>
+        ) : (
+          <div style={styles.tableWrapper}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  {["Paciente", "Data", "Status", "Ações"].map(h => (
+                    <th key={h} style={styles.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pendentes.map((c, i) => {
+                  const st = statusConfig[c.status] || statusConfig.pendente;
+                  return (
+                    <tr key={c.id} style={{ background: i % 2 === 0 ? "white" : "#fafcff" }}>
+                      <td style={styles.td}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <div style={styles.avatarSmall}>
+                            {(c.paciente_nome || c.paciente || "P").charAt(0).toUpperCase()}
+                          </div>
+                          <span style={{ fontWeight: 500, color: "#1e293b" }}>
+                            {c.paciente_nome || c.paciente || `Consulta #${c.id}`}
+                          </span>
+                        </div>
+                      </td>
+                      <td style={styles.td}>
+                        <span style={{ color: "#64748b", fontSize: "13px" }}>
+                          {c.data ? new Date(c.data).toLocaleDateString("pt-BR") : "—"}
+                        </span>
+                      </td>
+                      <td style={styles.td}>
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "3px 10px",
+                          borderRadius: "20px",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          background: st.bg,
+                          color: st.color,
+                          border: `1px solid ${st.border}`,
+                        }}>
+                          {st.label}
+                        </span>
+                      </td>
+                      <td style={styles.td}>
+                        <button
+                          onClick={() => navigate(`/checklist?consulta_id=${c.id}`)}
+                          style={styles.actionBtn}
+                        >
+                          Ver checklist
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const styles = {
-  wrapper: { display: "flex", flexDirection: "column", gap: "32px", fontFamily: "'DM Sans', sans-serif" },
-  header: { display: "flex", alignItems: "flex-start", justifyContent: "space-between" },
-  title: { fontFamily: "'Playfair Display', serif", fontSize: "28px", fontWeight: 700, color: "#0a2560", marginBottom: "4px" },
-  subtitle: { fontSize: "14px", color: "#64748b" },
-  dateBadge: { display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", background: "white", border: "1px solid #dbeafe", borderRadius: "10px", fontSize: "13px", color: "#334155", fontWeight: 500, boxShadow: "0 1px 6px rgba(37,99,235,0.06)" },
-  cardsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "20px" },
-  card: { background: "white", borderRadius: "16px", padding: "22px", display: "flex", alignItems: "center", gap: "16px", border: "1px solid #dbeafe", boxShadow: "0 2px 12px rgba(37,99,235,0.06)" },
-  cardIcon: { width: "48px", height: "48px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  cardValue: { fontSize: "28px", fontWeight: 700, color: "#0a2560", lineHeight: 1.1 },
-  cardLabel: { fontSize: "13px", color: "#64748b", marginTop: "2px" },
-  section: { background: "white", borderRadius: "16px", padding: "28px", border: "1px solid #dbeafe", boxShadow: "0 2px 12px rgba(37,99,235,0.06)" },
-  sectionTitle: { fontFamily: "'Playfair Display', serif", fontSize: "18px", fontWeight: 700, color: "#0a2560", marginBottom: "20px" },
-  activityList: { display: "flex", flexDirection: "column" },
-  activityItem: { display: "flex", alignItems: "center", gap: "16px", padding: "14px 0", borderBottom: "1px solid #f1f5f9" },
-  activityTime: { fontSize: "12px", color: "#94a3b8", fontWeight: 600, minWidth: "38px" },
-  activityDot: { width: "8px", height: "8px", borderRadius: "50%", background: "#2563eb", flexShrink: 0 },
-  activityContent: { flex: 1, display: "flex", flexDirection: "column", gap: "2px" },
-  activityPaciente: { fontSize: "14px", fontWeight: 600, color: "#0a2560" },
-  activityAcao: { fontSize: "12px", color: "#64748b" },
-  activityTag: { fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "20px", textTransform: "capitalize", letterSpacing: "0.02em" },
+  page: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "28px",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  title: {
+    fontFamily: "'Playfair Display', serif",
+    fontSize: "26px",
+    fontWeight: 700,
+    color: "#0a2560",
+    margin: "0 0 4px 0",
+  },
+  subtitle: {
+    fontSize: "13px",
+    color: "#64748b",
+    margin: 0,
+    textTransform: "capitalize",
+  },
+  newBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "10px 20px",
+    background: "linear-gradient(135deg, #1448a8, #1e6fd9)",
+    color: "white",
+    border: "none",
+    borderRadius: "10px",
+    fontSize: "14px",
+    fontWeight: 600,
+    cursor: "pointer",
+    fontFamily: "'DM Sans', sans-serif",
+    boxShadow: "0 4px 14px rgba(20,72,168,0.25)",
+  },
+  statsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "16px",
+  },
+  section: {
+    background: "white",
+    borderRadius: "16px",
+    border: "1px solid #e8f0fe",
+    overflow: "hidden",
+    boxShadow: "0 2px 12px rgba(20,72,168,0.06)",
+  },
+  sectionHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    padding: "20px 24px",
+    borderBottom: "1px solid #f1f5f9",
+  },
+  sectionTitle: {
+    fontFamily: "'Playfair Display', serif",
+    fontSize: "17px",
+    fontWeight: 700,
+    color: "#0a2560",
+    margin: 0,
+  },
+  badge: {
+    background: "#eff6ff",
+    color: "#1448a8",
+    border: "1px solid #bfdbfe",
+    borderRadius: "20px",
+    padding: "2px 9px",
+    fontSize: "12px",
+    fontWeight: 700,
+  },
+  emptyState: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: "48px 24px",
+  },
+  tableWrapper: {
+    overflowX: "auto",
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+  },
+  th: {
+    padding: "12px 24px",
+    textAlign: "left",
+    fontSize: "11px",
+    fontWeight: 700,
+    color: "#94a3b8",
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    background: "#f8faff",
+    borderBottom: "1px solid #f1f5f9",
+  },
+  td: {
+    padding: "14px 24px",
+    fontSize: "14px",
+    borderBottom: "1px solid #f1f5f9",
+  },
+  avatarSmall: {
+    width: "30px",
+    height: "30px",
+    borderRadius: "50%",
+    background: "linear-gradient(135deg, #1448a8, #1e6fd9)",
+    color: "white",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "12px",
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  actionBtn: {
+    padding: "6px 14px",
+    background: "#eff6ff",
+    color: "#1448a8",
+    border: "1px solid #bfdbfe",
+    borderRadius: "7px",
+    fontSize: "12px",
+    fontWeight: 600,
+    cursor: "pointer",
+    fontFamily: "'DM Sans', sans-serif",
+  },
 };

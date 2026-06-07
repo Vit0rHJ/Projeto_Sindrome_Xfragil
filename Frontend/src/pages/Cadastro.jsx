@@ -41,14 +41,14 @@ export function Cadastro() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
-  const [sucesso, setSucesso] = useState(false);
   const [form, setForm] = useState({
-    nome: "", data_nascimento: "", cpf: "", telefone: "",
-    email: "", endereco: "", observacoes: "",
+    nome: "", cpf: "", data_nascimento: "", email: "", telefone: "",
+    nome_responsavel: "", cpf_responsavel: "", telefone_responsavel: "",
   });
 
   function handleChange(e) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setErro("");
   }
 
   async function handleSubmit(e) {
@@ -56,17 +56,35 @@ export function Cadastro() {
     setLoading(true);
     setErro("");
     try {
-      const res = await fetch(`${API}/api/pacientes`, {
+      // 1. Cadastrar paciente
+      const resPac = await fetch(`${API}/api/pacientes`, {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify(form),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Erro ao cadastrar paciente");
-      setSucesso(true);
-      setTimeout(() => {
-        navigate("/checklist");
-      }, 1200);
+      const pacData = await resPac.json();
+      if (!resPac.ok) throw new Error(pacData.message || "Erro ao cadastrar paciente");
+
+      const paciente_id = pacData.id ?? pacData.paciente?.id;
+      if (!paciente_id) throw new Error("ID do paciente não retornado pela API");
+
+      // 2. Criar consulta vinculada ao paciente
+      const resConsulta = await fetch(`${API}/api/consultas`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          paciente_id,
+          data_consulta: new Date().toISOString().split("T")[0],
+        }),
+      });
+      const consultaData = await resConsulta.json();
+      if (!resConsulta.ok) throw new Error(consultaData.message || "Erro ao criar consulta");
+
+      const consulta_id = consultaData.id ?? consultaData.consulta?.id;
+      if (!consulta_id) throw new Error("ID da consulta não retornado pela API");
+
+      // 3. Ir direto para o checklist com o consulta_id
+      navigate(`/checklist?consulta_id=${consulta_id}`);
     } catch (err) {
       setErro(err.message);
     } finally {
@@ -78,104 +96,63 @@ export function Cadastro() {
     <div style={styles.page}>
       <div style={styles.pageHeader}>
         <h1 style={styles.title}>Novo Cadastro de Paciente</h1>
-        <p style={styles.subtitle}>Preencha os dados para registrar um novo paciente no sistema</p>
+        <p style={styles.subtitle}>Preencha os dados para registrar um novo paciente e iniciar o checklist</p>
       </div>
 
       <div style={styles.card}>
         <form onSubmit={handleSubmit}>
-          {/* Dados pessoais */}
+
+          {/* Dados do paciente */}
           <div style={styles.sectionBlock}>
             <div style={styles.sectionBlockHeader}>
               <div style={styles.sectionIcon}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                  <circle cx="12" cy="7" r="4"/>
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                 </svg>
               </div>
-              <h2 style={styles.sectionBlockTitle}>Dados Pessoais</h2>
+              <h2 style={styles.sectionBlockTitle}>Dados do Paciente</h2>
             </div>
-
             <div style={styles.grid2}>
               <Field label="Nome completo" required>
-                <input
-                  name="nome" value={form.nome} onChange={handleChange}
-                  required placeholder="Nome do paciente"
-                  style={inputStyle}
-                />
+                <input name="nome" value={form.nome} onChange={handleChange} required placeholder="Nome do paciente" style={inputStyle}/>
               </Field>
-              <Field label="Data de nascimento" required>
-                <input
-                  name="data_nascimento" type="date"
-                  value={form.data_nascimento} onChange={handleChange}
-                  required style={inputStyle}
-                />
+              <Field label="CPF" required>
+                <input name="cpf" value={form.cpf} onChange={handleChange} required placeholder="000.000.000-00" style={inputStyle}/>
               </Field>
-              <Field label="CPF">
-                <input
-                  name="cpf" value={form.cpf} onChange={handleChange}
-                  placeholder="000.000.000-00" style={inputStyle}
-                />
+              <Field label="Data de nascimento">
+                <input name="data_nascimento" type="date" value={form.data_nascimento} onChange={handleChange} style={inputStyle}/>
               </Field>
               <Field label="Telefone">
-                <input
-                  name="telefone" value={form.telefone} onChange={handleChange}
-                  placeholder="(00) 00000-0000" style={inputStyle}
-                />
+                <input name="telefone" value={form.telefone} onChange={handleChange} placeholder="(00) 00000-0000" style={inputStyle}/>
+              </Field>
+              <Field label="E-mail" >
+                <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="email@exemplo.com" style={inputStyle}/>
               </Field>
             </div>
           </div>
 
-          {/* Contato */}
+          {/* Dados do responsável */}
           <div style={styles.sectionBlock}>
             <div style={styles.sectionBlockHeader}>
               <div style={styles.sectionIcon}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                  <polyline points="22,6 12,13 2,6"/>
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
               </div>
-              <h2 style={styles.sectionBlockTitle}>Contato e Localização</h2>
+              <h2 style={styles.sectionBlockTitle}>Dados do Responsável</h2>
             </div>
-
             <div style={styles.grid2}>
-              <Field label="E-mail">
-                <input
-                  name="email" type="email" value={form.email} onChange={handleChange}
-                  placeholder="email@exemplo.com" style={inputStyle}
-                />
+              <Field label="Nome do responsável" required>
+                <input name="nome_responsavel" value={form.nome_responsavel} onChange={handleChange} required placeholder="Nome completo do responsável" style={inputStyle}/>
               </Field>
-              <Field label="Endereço">
-                <input
-                  name="endereco" value={form.endereco} onChange={handleChange}
-                  placeholder="Rua, número, bairro, cidade" style={inputStyle}
-                />
+              <Field label="CPF do responsável" required>
+                <input name="cpf_responsavel" value={form.cpf_responsavel} onChange={handleChange} required placeholder="000.000.000-00" style={inputStyle}/>
+              </Field>
+              <Field label="Telefone do responsável" required>
+                <input name="telefone_responsavel" value={form.telefone_responsavel} onChange={handleChange} required placeholder="(00) 00000-0000" style={inputStyle}/>
               </Field>
             </div>
-          </div>
-
-          {/* Observações */}
-          <div style={styles.sectionBlock}>
-            <div style={styles.sectionBlockHeader}>
-              <div style={styles.sectionIcon}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                  <polyline points="10 9 9 9 8 9"/>
-                </svg>
-              </div>
-              <h2 style={styles.sectionBlockTitle}>Observações Clínicas</h2>
-            </div>
-
-            <Field label="Observações">
-              <textarea
-                name="observacoes" value={form.observacoes} onChange={handleChange}
-                placeholder="Informações adicionais relevantes..."
-                rows={4}
-                style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
-              />
-            </Field>
           </div>
 
           {erro && (
@@ -187,26 +164,10 @@ export function Cadastro() {
             </div>
           )}
 
-          {sucesso && (
-            <div style={styles.successBox}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
-              </svg>
-              Paciente cadastrado! Redirecionando para o checklist...
-            </div>
-          )}
-
           <div style={styles.actions}>
-            <button
-              type="button"
-              onClick={() => navigate("/home")}
-              style={styles.cancelBtn}
-            >
-              Cancelar
-            </button>
+            <button type="button" onClick={() => navigate("/home")} style={styles.cancelBtn}>Cancelar</button>
             <button type="submit" disabled={loading} style={styles.submitBtn}>
-              {loading ? "Cadastrando..." : "Cadastrar Paciente"}
+              {loading ? "Cadastrando..." : "Cadastrar e iniciar Checklist →"}
             </button>
           </div>
         </form>
@@ -216,114 +177,18 @@ export function Cadastro() {
 }
 
 const styles = {
-  page: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "24px",
-    maxWidth: "860px",
-  },
-  pageHeader: {},
-  title: {
-    fontFamily: "'Playfair Display', serif",
-    fontSize: "26px",
-    fontWeight: 700,
-    color: "#0a2560",
-    margin: "0 0 6px 0",
-  },
-  subtitle: {
-    fontSize: "14px",
-    color: "#64748b",
-    margin: 0,
-  },
-  card: {
-    background: "white",
-    borderRadius: "16px",
-    border: "1px solid #e8f0fe",
-    overflow: "hidden",
-    boxShadow: "0 2px 12px rgba(20,72,168,0.06)",
-  },
-  sectionBlock: {
-    padding: "28px 32px",
-    borderBottom: "1px solid #f1f5f9",
-  },
-  sectionBlockHeader: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    marginBottom: "20px",
-  },
-  sectionIcon: {
-    width: "30px",
-    height: "30px",
-    borderRadius: "8px",
-    background: "linear-gradient(135deg, #1448a8, #1e6fd9)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  sectionBlockTitle: {
-    fontSize: "15px",
-    fontWeight: 700,
-    color: "#0a2560",
-    margin: 0,
-  },
-  grid2: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "16px",
-  },
-  errorBox: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    margin: "0 32px",
-    padding: "12px 16px",
-    background: "#fff1f2",
-    border: "1px solid #fecdd3",
-    borderRadius: "10px",
-    color: "#e11d48",
-    fontSize: "13px",
-  },
-  successBox: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    margin: "0 32px",
-    padding: "12px 16px",
-    background: "#f0fdf4",
-    border: "1px solid #bbf7d0",
-    borderRadius: "10px",
-    color: "#16a34a",
-    fontSize: "13px",
-  },
-  actions: {
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "12px",
-    padding: "24px 32px",
-  },
-  cancelBtn: {
-    padding: "11px 24px",
-    background: "transparent",
-    color: "#64748b",
-    border: "1.5px solid #e2e8f0",
-    borderRadius: "10px",
-    fontSize: "14px",
-    fontWeight: 600,
-    cursor: "pointer",
-    fontFamily: "'DM Sans', sans-serif",
-  },
-  submitBtn: {
-    padding: "11px 28px",
-    background: "linear-gradient(135deg, #1448a8, #1e6fd9)",
-    color: "white",
-    border: "none",
-    borderRadius: "10px",
-    fontSize: "14px",
-    fontWeight: 600,
-    cursor: "pointer",
-    fontFamily: "'DM Sans', sans-serif",
-    boxShadow: "0 4px 14px rgba(20,72,168,0.25)",
-  },
+  page:               { display: "flex", flexDirection: "column", gap: "24px", maxWidth: "860px" },
+  pageHeader:         {},
+  title:              { fontFamily: "'Playfair Display', serif", fontSize: "26px", fontWeight: 700, color: "#0a2560", margin: "0 0 6px 0" },
+  subtitle:           { fontSize: "14px", color: "#64748b", margin: 0 },
+  card:               { background: "white", borderRadius: "16px", border: "1px solid #e8f0fe", overflow: "hidden", boxShadow: "0 2px 12px rgba(20,72,168,0.06)" },
+  sectionBlock:       { padding: "28px 32px", borderBottom: "1px solid #f1f5f9" },
+  sectionBlockHeader: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" },
+  sectionIcon:        { width: "30px", height: "30px", borderRadius: "8px", background: "linear-gradient(135deg, #1448a8, #1e6fd9)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  sectionBlockTitle:  { fontSize: "15px", fontWeight: 700, color: "#0a2560", margin: 0 },
+  grid2:              { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" },
+  errorBox:           { display: "flex", alignItems: "center", gap: "8px", margin: "0 32px", padding: "12px 16px", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "10px", color: "#e11d48", fontSize: "13px" },
+  actions:            { display: "flex", justifyContent: "flex-end", gap: "12px", padding: "24px 32px" },
+  cancelBtn:          { padding: "11px 24px", background: "transparent", color: "#64748b", border: "1.5px solid #e2e8f0", borderRadius: "10px", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
+  submitBtn:          { padding: "11px 28px", background: "linear-gradient(135deg, #1448a8, #1e6fd9)", color: "white", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 4px 14px rgba(20,72,168,0.25)" },
 };

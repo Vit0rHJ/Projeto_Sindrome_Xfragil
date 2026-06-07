@@ -25,12 +25,10 @@ const gerarLaudo = async (req, res) => {
     );
 
     if (checklist.length === 0) {
-      return res
-        .status(404)
-        .json({
-          mensagem:
-            "Checklist não encontrado. Realize o checklist antes de gerar o laudo.",
-        });
+      return res.status(404).json({
+        mensagem:
+          "Checklist não encontrado. Realize o checklist antes de gerar o laudo.",
+      });
     }
     //vai verificar se a pasta Laudos ta salva dentro do back, se éla nao existir, vai criar sozinha na primeira vez que essa parte for rodada
     const laudosDir = path.join(__dirname, "..", "laudos");
@@ -47,11 +45,9 @@ const gerarLaudo = async (req, res) => {
     doc.pipe(stream);
     //aqui é aonde vamos escrever o conteudo do pdf, da pra define fonte texto e pa
     doc.fontSize(20).text("LAUDO DE CONSULTA", { align: "center" });
-    doc
-      .fontSize(12)
-      .text("Sistema de Identificação da Síndrome do X Frágil", {
-        align: "center",
-      });
+    doc.fontSize(12).text("Sistema de Identificação da Síndrome do X Frágil", {
+      align: "center",
+    });
     doc.moveDown();
     doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
     doc.moveDown();

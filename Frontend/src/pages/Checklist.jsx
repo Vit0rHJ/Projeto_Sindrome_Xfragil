@@ -1,164 +1,257 @@
 import { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
-const itensChecklist = [
-  { id: 1,  categoria: "Avaliação Inicial",    label: "Anamnese completa realizada" },
-  { id: 2,  categoria: "Avaliação Inicial",    label: "Histórico familiar documentado" },
-  { id: 3,  categoria: "Avaliação Inicial",    label: "Exame físico geral realizado" },
-  { id: 4,  categoria: "Avaliação Cognitiva",  label: "Teste de linguagem aplicado" },
-  { id: 5,  categoria: "Avaliação Cognitiva",  label: "Avaliação de memória de trabalho" },
-  { id: 6,  categoria: "Avaliação Cognitiva",  label: "Escala de comportamento preenchida" },
-  { id: 7,  categoria: "Exames Solicitados",   label: "Cariótipo / teste molecular solicitado" },
-  { id: 8,  categoria: "Exames Solicitados",   label: "Eletroencefalograma indicado" },
-  { id: 9,  categoria: "Acompanhamento",       label: "Encaminhamento para fonoaudiologia" },
-  { id: 10, categoria: "Acompanhamento",       label: "Encaminhamento para terapia ocupacional" },
-  { id: 11, categoria: "Acompanhamento",       label: "Orientações entregues à família" },
-  { id: 12, categoria: "Acompanhamento",       label: "Próxima consulta agendada" },
+const API = "http://localhost:3001";
+const authHeaders = () => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${localStorage.getItem("token")}`,
+});
+
+// 12 sintomas exatos do banco (colunas sin_* da tabela checklist)
+const SINTOMAS = [
+  { id: "sin_macroquidia",          label: "Macroquidia",                  desc: "Testículos aumentados (pós-puberdade, em meninos)" },
+  { id: "sin_face_alongada",        label: "Face alongada",                desc: "Rosto comprido, características faciais típicas da síndrome" },
+  { id: "sin_orelhas_proeminentes", label: "Orelhas proeminentes",         desc: "Orelhas grandes ou salientes" },
+  { id: "sin_prognatismo",          label: "Prognatismo",                  desc: "Mandíbula projetada para frente" },
+  { id: "sin_hipotonia",            label: "Hipotonia muscular",           desc: "Tônus muscular reduzido, flacidez" },
+  { id: "sin_frouxidao",            label: "Frouxidão ligamentar",         desc: "Articulações com mobilidade excessiva (hipermobilidade)" },
+  { id: "sin_palato_ogival",        label: "Palato ogival",                desc: "Céu da boca em formato de arco elevado" },
+  { id: "sin_def_intelectual",      label: "Deficiência intelectual",      desc: "Dificuldades de aprendizagem e desenvolvimento cognitivo" },
+  { id: "sin_atraso_fala",          label: "Atraso na fala / linguagem",   desc: "Desenvolvimento tardio ou ausente da comunicação verbal" },
+  { id: "sin_hiperatividade",       label: "Hiperatividade / TDAH",        desc: "Agitação, impulsividade e déficit de atenção" },
+  { id: "sin_autismo",              label: "Comportamento autista (TEA)",   desc: "Características do espectro autista" },
+  { id: "sin_ansiedade",            label: "Ansiedade",                    desc: "Transtornos de ansiedade significativos" },
 ];
 
+const encaminhamentoConfig = {
+  observacao: {
+    label: "Observação",
+    desc: "Score baixo (≤ 3). Monitoramento clínico recomendado.",
+    color: "#1448a8",
+    bg: "#eff6ff",
+    border: "#bfdbfe",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+    ),
+  },
+  auxilio_clinico: {
+    label: "Auxílio Clínico",
+    desc: "Score moderado (4–7). Encaminhamento para especialista recomendado.",
+    color: "#0f3494",
+    bg: "#dbeafe",
+    border: "#93c5fd",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+      </svg>
+    ),
+  },
+  medicacao: {
+    label: "Medicação",
+    desc: "Score alto (≥ 8). Avaliação para tratamento medicamentoso e investigação genética.",
+    color: "#ffffff",
+    bg: "#1448a8",
+    border: "#0f3494",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M10.5 20H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H20a2 2 0 0 1 2 2v3"/>
+        <circle cx="18" cy="18" r="4"/><path d="M15.6 15.6l4.8 4.8"/>
+      </svg>
+    ),
+  },
+};
+
 export function Checklist() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const consultaId = searchParams.get("consulta_id");
+
   const [marcados, setMarcados] = useState({});
-  const [paciente, setPaciente] = useState("");
-  const [salvo, setSalvo] = useState(false);
+  const [resultado, setResultado] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState("");
 
-  function toggle(id) {
-    setMarcados((prev) => ({ ...prev, [id]: !prev[id] }));
-    setSalvo(false);
+  function toggleSintoma(id) {
+    if (resultado) return;
+    setMarcados(prev => ({ ...prev, [id]: !prev[id] }));
   }
 
-  const total = itensChecklist.length;
-  const concluidos = Object.values(marcados).filter(Boolean).length;
-  const progresso = Math.round((concluidos / total) * 100);
-  const categorias = [...new Set(itensChecklist.map((i) => i.categoria))];
+  const totalMarcados = Object.values(marcados).filter(Boolean).length;
 
-  function handleSalvar() {
-    if (!paciente.trim()) return;
-    setSalvo(true);
-    setTimeout(() => setSalvo(false), 3000);
+  async function handleSubmit() {
+    if (!consultaId) {
+      setErro("Nenhuma consulta selecionada. Cadastre um paciente primeiro.");
+      return;
+    }
+    setLoading(true);
+    setErro("");
+    try {
+      // Monta o body com cada sin_* como boolean
+      const body = { consulta_id: Number(consultaId) };
+      SINTOMAS.forEach(s => { body[s.id] = !!marcados[s.id]; });
+
+      const res = await fetch(`${API}/api/checklist`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Erro ao salvar checklist");
+      setResultado(data);
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
+
+  const enc = resultado?.encaminhamento ? encaminhamentoConfig[resultado.encaminhamento] : null;
 
   return (
-    <div style={styles.wrapper}>
-      {/* Header */}
-      <div style={styles.header}>
-        <div>
-          <h1 style={styles.title}>Checklist de Consulta</h1>
-          <p style={styles.subtitle}>Registro clínico para acompanhamento do paciente</p>
-        </div>
-        <div style={styles.progressBadge}>
-          <svg width="56" height="56" viewBox="0 0 36 36">
-            <circle cx="18" cy="18" r="14" fill="none" stroke="#dbeafe" strokeWidth="4"/>
-            <circle
-              cx="18" cy="18" r="14" fill="none"
-              stroke="#2563eb" strokeWidth="4"
-              strokeDasharray={`${progresso * 0.879} 100`}
-              strokeLinecap="round"
-              transform="rotate(-90 18 18)"
-              style={{ transition: "stroke-dasharray 0.4s" }}
-            />
-          </svg>
-          <span style={styles.progressText}>{progresso}%</span>
-        </div>
-      </div>
-
-      {/* Campo paciente */}
-      <div style={styles.card}>
-        <label style={styles.label}>Nome do Paciente</label>
-        <input
-          style={styles.pacienteInput}
-          type="text"
-          placeholder="Ex: João Pedro Almeida"
-          value={paciente}
-          onChange={(e) => { setPaciente(e.target.value); setSalvo(false); }}
-        />
+    <div style={styles.page}>
+      <div style={styles.pageHeader}>
+        <h1 style={styles.title}>Checklist de Sintomas</h1>
+        <p style={styles.subtitle}>
+          {consultaId
+            ? `Consulta #${consultaId} — marque os sintomas observados no paciente`
+            : "⚠️ Nenhuma consulta selecionada — acesse pelo cadastro do paciente"}
+        </p>
       </div>
 
       {/* Barra de progresso */}
-      <div style={styles.card}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
-          <span style={styles.label}>Progresso da consulta</span>
-          <span style={{ fontSize: "13px", color: "#2563eb", fontWeight: 700 }}>{concluidos} / {total} itens</span>
+      <div style={styles.progressCard}>
+        <div style={styles.progressHeader}>
+          <span style={styles.progressLabel}>{totalMarcados} de {SINTOMAS.length} sintomas marcados</span>
+          <span style={styles.progressPercent}>{Math.round((totalMarcados / SINTOMAS.length) * 100)}%</span>
         </div>
-        <div style={styles.progressBarBg}>
-          <div style={{ ...styles.progressBarFill, width: `${progresso}%` }} />
+        <div style={styles.progressTrack}>
+          <div style={{ ...styles.progressFill, width: `${(totalMarcados / SINTOMAS.length) * 100}%` }} />
         </div>
       </div>
 
-      {/* Itens por categoria */}
-      {categorias.map((cat) => (
-        <div key={cat} style={styles.card}>
-          <h3 style={styles.catTitle}>
-            <span style={styles.catDot} />{cat}
-          </h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {itensChecklist.filter((item) => item.categoria === cat).map((item) => {
-              const checked = !!marcados[item.id];
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => toggle(item.id)}
-                  style={{ ...styles.itemBtn, background: checked ? "#eff6ff" : "white", borderColor: checked ? "#93c5fd" : "#e2e8f0" }}
-                >
-                  <div style={{ ...styles.checkbox, background: checked ? "#2563eb" : "white", borderColor: checked ? "#2563eb" : "#cbd5e1" }}>
-                    {checked && (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5">
-                        <path d="M20 6L9 17l-5-5"/>
-                      </svg>
-                    )}
-                  </div>
-                  <span style={{ ...styles.itemLabel, color: checked ? "#1448a8" : "#334155", textDecoration: checked ? "line-through" : "none", opacity: checked ? 0.75 : 1 }}>
-                    {item.label}
+      {/* Grid de sintomas */}
+      {!resultado && (
+        <div style={styles.sintomasGrid}>
+          {SINTOMAS.map((s) => {
+            const checked = !!marcados[s.id];
+            return (
+              <div
+                key={s.id}
+                onClick={() => toggleSintoma(s.id)}
+                style={{
+                  ...styles.sintomaCard,
+                  border: checked ? "1.5px solid #1448a8" : "1.5px solid #e2e8f0",
+                  background: checked ? "#eff6ff" : "white",
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{
+                  ...styles.checkbox,
+                  background: checked ? "#1448a8" : "white",
+                  border: checked ? "none" : "2px solid #cbd5e1",
+                }}>
+                  {checked && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  )}
+                </div>
+                <div style={styles.sintomaInfo}>
+                  <span style={{ ...styles.sintomaLabel, color: checked ? "#1448a8" : "#1e293b" }}>
+                    {s.label}
                   </span>
-                </button>
-              );
-            })}
+                  <span style={styles.sintomaDesc}>{s.desc}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Resultado */}
+      {resultado && enc && (
+        <div style={{ ...styles.resultCard, background: enc.bg, border: `1.5px solid ${enc.border}` }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
+            <div style={{
+              width: "48px", height: "48px", borderRadius: "12px",
+              background: "rgba(255,255,255,0.25)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: enc.color, flexShrink: 0,
+            }}>
+              {enc.icon}
+            </div>
+            <div>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: enc.color, letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 4px 0" }}>
+                Encaminhamento gerado — score: {resultado.score_total ?? totalMarcados}/12
+              </p>
+              <h3 style={{ fontSize: "22px", fontWeight: 700, color: enc.color === "#ffffff" ? "white" : "#0a2560", margin: "0 0 6px 0", fontFamily: "'Playfair Display', serif" }}>
+                {enc.label}
+              </h3>
+              <p style={{ fontSize: "14px", color: enc.color === "#ffffff" ? "rgba(255,255,255,0.85)" : "#475569", margin: 0 }}>{enc.desc}</p>
+            </div>
           </div>
         </div>
-      ))}
+      )}
 
-      {/* Botão salvar */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "16px", paddingBottom: "20px" }}>
-        {salvo && (
-          <div style={styles.sucessoMsg}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2.5">
-              <path d="M20 6L9 17l-5-5"/>
-            </svg>
-            Checklist salvo com sucesso!
-          </div>
-        )}
-        <button
-          style={{ ...styles.btnSalvar, opacity: !paciente.trim() ? 0.55 : 1, cursor: !paciente.trim() ? "not-allowed" : "pointer" }}
-          onClick={handleSalvar}
-          disabled={!paciente.trim()}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-            <polyline points="17 21 17 13 7 13 7 21"/>
-            <polyline points="7 3 7 8 15 8"/>
+      {erro && (
+        <div style={styles.errorBox}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
-          Salvar Checklist
-        </button>
+          {erro}
+        </div>
+      )}
+
+      {/* Ações */}
+      <div style={styles.actions}>
+        {!resultado ? (
+          <>
+            <button onClick={() => navigate("/home")} style={styles.cancelBtn}>Cancelar</button>
+            <button
+              onClick={handleSubmit}
+              disabled={loading || totalMarcados === 0 || !consultaId}
+              style={{ ...styles.submitBtn, opacity: (totalMarcados === 0 || !consultaId) ? 0.5 : 1 }}
+            >
+              {loading ? "Salvando..." : `Gerar Encaminhamento (${totalMarcados})`}
+            </button>
+          </>
+        ) : (
+          <>
+            <button onClick={() => navigate("/home")} style={styles.cancelBtn}>Voltar ao Início</button>
+            {resultado.consulta_id && (
+              <button onClick={() => navigate(`/laudo/${resultado.consulta_id}`)} style={styles.submitBtn}>
+                Ver Laudo Completo
+              </button>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 const styles = {
-  wrapper: { display: "flex", flexDirection: "column", gap: "24px", fontFamily: "'DM Sans', sans-serif", maxWidth: "720px" },
-  header: { display: "flex", alignItems: "flex-start", justifyContent: "space-between" },
-  title: { fontFamily: "'Playfair Display', serif", fontSize: "28px", fontWeight: 700, color: "#0a2560", marginBottom: "4px" },
-  subtitle: { fontSize: "14px", color: "#64748b" },
-  progressBadge: { position: "relative", width: "56px", height: "56px", display: "flex", alignItems: "center", justifyContent: "center" },
-  progressText: { position: "absolute", fontSize: "11px", fontWeight: 700, color: "#2563eb" },
-  card: { background: "white", borderRadius: "14px", padding: "20px", border: "1px solid #dbeafe", boxShadow: "0 2px 10px rgba(37,99,235,0.05)" },
-  label: { fontSize: "13px", fontWeight: 600, color: "#334155", display: "block", marginBottom: "8px" },
-  pacienteInput: { width: "100%", padding: "10px 14px", border: "1.5px solid #dbeafe", borderRadius: "10px", fontSize: "14px", color: "#0a2560", background: "#f8fbff", outline: "none", fontFamily: "'DM Sans', sans-serif" },
-  progressBarBg: { height: "8px", background: "#dbeafe", borderRadius: "8px", overflow: "hidden" },
-  progressBarFill: { height: "100%", background: "linear-gradient(90deg, #1448a8, #2563eb)", borderRadius: "8px", transition: "width 0.35s ease" },
-  catTitle: { display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: 700, color: "#0a2560", marginBottom: "14px", letterSpacing: "0.02em" },
-  catDot: { width: "8px", height: "8px", borderRadius: "50%", background: "#2563eb", flexShrink: 0 },
-  itemBtn: { display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px", borderRadius: "10px", border: "1.5px solid", cursor: "pointer", textAlign: "left", width: "100%", fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s" },
-  checkbox: { width: "20px", height: "20px", borderRadius: "6px", border: "2px solid", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" },
-  itemLabel: { fontSize: "14px", fontWeight: 500, transition: "all 0.15s" },
-  sucessoMsg: { display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#166534", background: "#dcfce7", padding: "8px 16px", borderRadius: "8px", fontWeight: 500 },
-  btnSalvar: { display: "flex", alignItems: "center", gap: "8px", background: "linear-gradient(135deg, #1448a8, #2563eb)", color: "white", border: "none", borderRadius: "10px", padding: "12px 22px", fontSize: "14px", fontWeight: 600, fontFamily: "'DM Sans', sans-serif", transition: "opacity 0.2s" },
+  page:            { display: "flex", flexDirection: "column", gap: "24px" },
+  pageHeader:      {},
+  title:           { fontFamily: "'Playfair Display', serif", fontSize: "26px", fontWeight: 700, color: "#0a2560", margin: "0 0 6px 0" },
+  subtitle:        { fontSize: "14px", color: "#64748b", margin: 0 },
+  progressCard:    { background: "white", borderRadius: "14px", padding: "20px 24px", border: "1px solid #e8f0fe", boxShadow: "0 2px 12px rgba(20,72,168,0.06)" },
+  progressHeader:  { display: "flex", justifyContent: "space-between", marginBottom: "10px" },
+  progressLabel:   { fontSize: "13px", color: "#64748b", fontWeight: 500 },
+  progressPercent: { fontSize: "13px", fontWeight: 700, color: "#1448a8" },
+  progressTrack:   { height: "8px", background: "#e8f0fe", borderRadius: "999px", overflow: "hidden" },
+  progressFill:    { height: "100%", background: "linear-gradient(90deg, #1448a8, #1e6fd9)", borderRadius: "999px", transition: "width 0.3s ease" },
+  sintomasGrid:    { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "12px" },
+  sintomaCard:     { display: "flex", alignItems: "flex-start", gap: "12px", padding: "16px", borderRadius: "12px", transition: "all 0.15s", userSelect: "none" },
+  checkbox:        { width: "22px", height: "22px", borderRadius: "6px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginTop: "1px", transition: "all 0.15s" },
+  sintomaInfo:     { display: "flex", flexDirection: "column", gap: "3px" },
+  sintomaLabel:    { fontSize: "14px", fontWeight: 600, lineHeight: 1.3 },
+  sintomaDesc:     { fontSize: "12px", color: "#94a3b8", lineHeight: 1.4 },
+  resultCard:      { borderRadius: "16px", padding: "24px 28px" },
+  errorBox:        { display: "flex", alignItems: "center", gap: "8px", padding: "12px 16px", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "10px", color: "#e11d48", fontSize: "13px" },
+  actions:         { display: "flex", justifyContent: "flex-end", gap: "12px", paddingTop: "4px" },
+  cancelBtn:       { padding: "11px 24px", background: "transparent", color: "#64748b", border: "1.5px solid #e2e8f0", borderRadius: "10px", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
+  submitBtn:       { padding: "11px 28px", background: "linear-gradient(135deg, #1448a8, #1e6fd9)", color: "white", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 4px 14px rgba(20,72,168,0.25)" },
 };

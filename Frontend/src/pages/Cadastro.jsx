@@ -1,146 +1,194 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-export function Cadastro() {
-  const navigate = useNavigate();
-  const [form, setForm] = useState({ nome: "", email: "", crm: "", senha: "", confirmarSenha: "" });
-  const [erros, setErros] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [sucesso, setSucesso] = useState(false);
+const API = "http://localhost:3001";
+const authHeaders = () => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${localStorage.getItem("token")}`,
+});
 
-  function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
-    setErros({ ...erros, [e.target.name]: "" });
-  }
-
-  function validar() {
-    const e = {};
-    if (!form.nome.trim()) e.nome = "Nome completo é obrigatório.";
-    if (!form.email.trim()) e.email = "E-mail é obrigatório.";
-    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "E-mail inválido.";
-    if (!form.crm.trim()) e.crm = "CRM/CRF é obrigatório.";
-    if (!form.senha) e.senha = "Senha é obrigatória.";
-    else if (form.senha.length < 6) e.senha = "Mínimo de 6 caracteres.";
-    if (form.senha !== form.confirmarSenha) e.confirmarSenha = "As senhas não coincidem.";
-    return e;
-  }
-
-  function handleSubmit(e) {
-    e.preventDefault();
-    const errosValidados = validar();
-    if (Object.keys(errosValidados).length > 0) { setErros(errosValidados); return; }
-    setLoading(true);
-    setTimeout(() => { setLoading(false); setSucesso(true); setTimeout(() => navigate("/home"), 1800); }, 1000);
-  }
-
-  if (sucesso) {
-    return (
-      <div style={{ ...styles.wrapper, alignItems: "center", justifyContent: "center" }}>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes fillBar { from { width: 0 } to { width: 100% } }`}</style>
-        <div style={styles.sucessoCard}>
-          <div style={styles.sucessoIconWrap}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5">
-              <path d="M20 6L9 17l-5-5"/>
-            </svg>
-          </div>
-          <h2 style={styles.sucessoTitle}>Cadastro realizado!</h2>
-          <p style={styles.sucessoText}>Bem-vindo(a), <strong>{form.nome.split(" ")[0]}</strong>.<br />Redirecionando para o painel...</p>
-          <div style={styles.progressBar}><div style={styles.progressFill} /></div>
-        </div>
-      </div>
-    );
-  }
-
+function Field({ label, children, required }) {
   return (
-    <div style={styles.wrapper}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-
-      {/* Top bar */}
-      <div style={styles.topBar}>
-        <div style={styles.topBarInner}>
-          <Link to="/" style={styles.backLink}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-            Voltar ao login
-          </Link>
-          <span style={styles.topBarTitle}>Síndrome X Frágil</span>
-        </div>
-      </div>
-
-      <div style={styles.body}>
-        {/* Info lateral */}
-        <div style={styles.infoPanel}>
-          <h1 style={styles.infoTitle}>Cadastro de<br /><span style={{ color: "#2563eb" }}>Profissional de Saúde</span></h1>
-          <p style={styles.infoText}>Preencha seus dados para acessar o sistema de gerenciamento clínico.</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {[{ n: "01", label: "Preencha seus dados" }, { n: "02", label: "Confirme sua senha" }, { n: "03", label: "Acesse o painel" }].map(s => (
-              <div key={s.n} style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                <span style={styles.stepNum}>{s.n}</span>
-                <span style={{ fontSize: "14px", color: "#334155", fontWeight: 500 }}>{s.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Formulário */}
-        <div style={styles.formCard}>
-          <h2 style={styles.formTitle}>Criar conta</h2>
-          <p style={styles.formSubtitle}>Todos os campos são obrigatórios</p>
-
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "18px" }} noValidate>
-            <Field label="Nome completo" name="nome" type="text" placeholder="Dr(a). João Silva" value={form.nome} onChange={handleChange} erro={erros.nome} />
-            <Field label="E-mail profissional" name="email" type="email" placeholder="seuemail@hospital.com" value={form.email} onChange={handleChange} erro={erros.email} />
-            <Field label="CRM / CRF" name="crm" type="text" placeholder="CRM-SP 123456 ou CRF-RJ 98765" value={form.crm} onChange={handleChange} erro={erros.crm} />
-            <div style={{ display: "flex", gap: "16px" }}>
-              <Field label="Senha" name="senha" type="password" placeholder="••••••••" value={form.senha} onChange={handleChange} erro={erros.senha} />
-              <Field label="Confirmar senha" name="confirmarSenha" type="password" placeholder="••••••••" value={form.confirmarSenha} onChange={handleChange} erro={erros.confirmarSenha} />
-            </div>
-            <button type="submit" disabled={loading} style={{ ...styles.btn, opacity: loading ? 0.75 : 1 }}>
-              {loading ? <span style={styles.spinner} /> : <>Cadastrar profissional <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>}
-            </button>
-          </form>
-
-          <p style={{ textAlign: "center", fontSize: "14px", color: "#64748b", marginTop: "20px" }}>
-            Já tem conta? <Link to="/" style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>Entrar</Link>
-          </p>
-        </div>
-      </div>
+    <div style={fieldStyles.group}>
+      <label style={fieldStyles.label}>
+        {label}
+        {required && <span style={{ color: "#e11d48", marginLeft: "3px" }}>*</span>}
+      </label>
+      {children}
     </div>
   );
 }
 
-function Field({ label, name, type, placeholder, value, onChange, erro }) {
+const fieldStyles = {
+  group: { display: "flex", flexDirection: "column", gap: "6px" },
+  label: { fontSize: "13px", fontWeight: 600, color: "#374151" },
+};
+
+const inputStyle = {
+  padding: "11px 14px",
+  border: "1.5px solid #e2e8f0",
+  borderRadius: "10px",
+  fontSize: "14px",
+  color: "#1e293b",
+  background: "#f8faff",
+  fontFamily: "'DM Sans', sans-serif",
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
+};
+
+export function Cadastro() {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState("");
+  const [form, setForm] = useState({
+    nome: "", cpf: "", data_nascimento: "", email: "", telefone: "",
+    nome_responsavel: "", cpf_responsavel: "", telefone_responsavel: "",
+  });
+
+  function handleChange(e) {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setErro("");
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    setErro("");
+    try {
+      // 1. Cadastrar paciente
+      const resPac = await fetch(`${API}/api/pacientes`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(form),
+      });
+      const pacData = await resPac.json();
+      if (!resPac.ok) throw new Error(pacData.message || "Erro ao cadastrar paciente");
+
+      const paciente_id = pacData.id ?? pacData.paciente?.id;
+      if (!paciente_id) throw new Error("ID do paciente não retornado pela API");
+
+      // 2. Criar consulta vinculada ao paciente
+      const resConsulta = await fetch(`${API}/api/consultas`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          paciente_id,
+          data_consulta: new Date().toISOString().split("T")[0],
+        }),
+      });
+      const consultaData = await resConsulta.json();
+      if (!resConsulta.ok) throw new Error(consultaData.message || "Erro ao criar consulta");
+
+      const consulta_id = consultaData.id ?? consultaData.consulta?.id;
+      if (!consulta_id) throw new Error("ID da consulta não retornado pela API");
+
+      // 3. Ir direto para o checklist com o consulta_id
+      navigate(`/checklist?consulta_id=${consulta_id}`);
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "5px", flex: 1 }}>
-      <label style={{ fontSize: "13px", fontWeight: 600, color: "#334155" }}>{label}</label>
-      <input
-        style={{ width: "100%", padding: "10px 14px", border: `1.5px solid ${erro ? "#fca5a5" : "#dbeafe"}`, borderRadius: "10px", fontSize: "14px", color: "#0a2560", background: erro ? "#fff8f8" : "#f8fbff", outline: "none", fontFamily: "'DM Sans', sans-serif" }}
-        type={type} name={name} placeholder={placeholder} value={value} onChange={onChange} autoComplete="off"
-      />
-      {erro && <span style={{ fontSize: "12px", color: "#dc2626" }}>{erro}</span>}
+    <div style={styles.page}>
+      <div style={styles.pageHeader}>
+        <h1 style={styles.title}>Novo Cadastro de Paciente</h1>
+        <p style={styles.subtitle}>Preencha os dados para registrar um novo paciente e iniciar o checklist</p>
+      </div>
+
+      <div style={styles.card}>
+        <form onSubmit={handleSubmit}>
+
+          {/* Dados do paciente */}
+          <div style={styles.sectionBlock}>
+            <div style={styles.sectionBlockHeader}>
+              <div style={styles.sectionIcon}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+              <h2 style={styles.sectionBlockTitle}>Dados do Paciente</h2>
+            </div>
+            <div style={styles.grid2}>
+              <Field label="Nome completo" required>
+                <input name="nome" value={form.nome} onChange={handleChange} required placeholder="Nome do paciente" style={inputStyle}/>
+              </Field>
+              <Field label="CPF" required>
+                <input name="cpf" value={form.cpf} onChange={handleChange} required placeholder="000.000.000-00" style={inputStyle}/>
+              </Field>
+              <Field label="Data de nascimento">
+                <input name="data_nascimento" type="date" value={form.data_nascimento} onChange={handleChange} style={inputStyle}/>
+              </Field>
+              <Field label="Telefone">
+                <input name="telefone" value={form.telefone} onChange={handleChange} placeholder="(00) 00000-0000" style={inputStyle}/>
+              </Field>
+              <Field label="E-mail" >
+                <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="email@exemplo.com" style={inputStyle}/>
+              </Field>
+            </div>
+          </div>
+
+          {/* Dados do responsável */}
+          <div style={styles.sectionBlock}>
+            <div style={styles.sectionBlockHeader}>
+              <div style={styles.sectionIcon}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <h2 style={styles.sectionBlockTitle}>Dados do Responsável</h2>
+            </div>
+            <div style={styles.grid2}>
+              <Field label="Nome do responsável" required>
+                <input name="nome_responsavel" value={form.nome_responsavel} onChange={handleChange} required placeholder="Nome completo do responsável" style={inputStyle}/>
+              </Field>
+              <Field label="CPF do responsável" required>
+                <input name="cpf_responsavel" value={form.cpf_responsavel} onChange={handleChange} required placeholder="000.000.000-00" style={inputStyle}/>
+              </Field>
+              <Field label="Telefone do responsável" required>
+                <input name="telefone_responsavel" value={form.telefone_responsavel} onChange={handleChange} required placeholder="(00) 00000-0000" style={inputStyle}/>
+              </Field>
+            </div>
+          </div>
+
+          {erro && (
+            <div style={styles.errorBox}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              {erro}
+            </div>
+          )}
+
+          <div style={styles.actions}>
+            <button type="button" onClick={() => navigate("/home")} style={styles.cancelBtn}>Cancelar</button>
+            <button type="submit" disabled={loading} style={styles.submitBtn}>
+              {loading ? "Cadastrando..." : "Cadastrar e iniciar Checklist →"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
 
 const styles = {
-  wrapper: { minHeight: "100vh", background: "#f0f6ff", fontFamily: "'DM Sans', sans-serif", display: "flex", flexDirection: "column" },
-  topBar: { background: "linear-gradient(135deg, #0a2560, #2563eb)", padding: "0 40px" },
-  topBarInner: { maxWidth: "1100px", margin: "0 auto", height: "56px", display: "flex", alignItems: "center", justifyContent: "space-between" },
-  backLink: { display: "flex", alignItems: "center", gap: "6px", color: "rgba(255,255,255,0.85)", textDecoration: "none", fontSize: "14px", fontWeight: 500 },
-  topBarTitle: { color: "white", fontWeight: 600, fontSize: "15px" },
-  body: { flex: 1, display: "flex", maxWidth: "1100px", margin: "0 auto", width: "100%", padding: "48px 40px", gap: "56px", alignItems: "flex-start" },
-  infoPanel: { flex: "0 0 300px", paddingTop: "8px" },
-  infoTitle: { fontFamily: "'Playfair Display', serif", fontSize: "34px", fontWeight: 700, color: "#0a2560", lineHeight: 1.15, marginBottom: "18px" },
-  infoText: { fontSize: "15px", color: "#64748b", lineHeight: 1.65, marginBottom: "36px" },
-  stepNum: { width: "36px", height: "36px", borderRadius: "50%", background: "linear-gradient(135deg, #1448a8, #2563eb)", color: "white", fontWeight: 700, fontSize: "13px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  formCard: { flex: 1, background: "white", borderRadius: "20px", padding: "40px", boxShadow: "0 4px 32px rgba(37,99,235,0.08)", border: "1px solid #dbeafe" },
-  formTitle: { fontFamily: "'Playfair Display', serif", fontSize: "24px", fontWeight: 700, color: "#0a2560", marginBottom: "4px" },
-  formSubtitle: { fontSize: "14px", color: "#64748b", marginBottom: "28px" },
-  btn: { display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "linear-gradient(135deg, #1448a8, #2563eb)", color: "white", border: "none", borderRadius: "10px", padding: "13px", fontSize: "15px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: "8px" },
-  spinner: { width: "18px", height: "18px", border: "2px solid rgba(255,255,255,0.3)", borderTop: "2px solid white", borderRadius: "50%", animation: "spin 0.7s linear infinite", display: "inline-block" },
-  sucessoCard: { background: "white", borderRadius: "20px", padding: "56px 48px", textAlign: "center", maxWidth: "380px", boxShadow: "0 4px 32px rgba(37,99,235,0.1)", border: "1px solid #dbeafe" },
-  sucessoIconWrap: { width: "72px", height: "72px", borderRadius: "50%", background: "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" },
-  sucessoTitle: { fontFamily: "'Playfair Display', serif", fontSize: "26px", color: "#0a2560", marginBottom: "10px" },
-  sucessoText: { fontSize: "15px", color: "#64748b", lineHeight: 1.6, marginBottom: "28px" },
-  progressBar: { height: "4px", background: "#dbeafe", borderRadius: "4px", overflow: "hidden" },
-  progressFill: { height: "100%", background: "linear-gradient(135deg, #1448a8, #2563eb)", borderRadius: "4px", animation: "fillBar 1.8s ease forwards" },
+  page:               { display: "flex", flexDirection: "column", gap: "24px", maxWidth: "860px" },
+  pageHeader:         {},
+  title:              { fontFamily: "'Playfair Display', serif", fontSize: "26px", fontWeight: 700, color: "#0a2560", margin: "0 0 6px 0" },
+  subtitle:           { fontSize: "14px", color: "#64748b", margin: 0 },
+  card:               { background: "white", borderRadius: "16px", border: "1px solid #e8f0fe", overflow: "hidden", boxShadow: "0 2px 12px rgba(20,72,168,0.06)" },
+  sectionBlock:       { padding: "28px 32px", borderBottom: "1px solid #f1f5f9" },
+  sectionBlockHeader: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" },
+  sectionIcon:        { width: "30px", height: "30px", borderRadius: "8px", background: "linear-gradient(135deg, #1448a8, #1e6fd9)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  sectionBlockTitle:  { fontSize: "15px", fontWeight: 700, color: "#0a2560", margin: 0 },
+  grid2:              { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" },
+  errorBox:           { display: "flex", alignItems: "center", gap: "8px", margin: "0 32px", padding: "12px 16px", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "10px", color: "#e11d48", fontSize: "13px" },
+  actions:            { display: "flex", justifyContent: "flex-end", gap: "12px", padding: "24px 32px" },
+  cancelBtn:          { padding: "11px 24px", background: "transparent", color: "#64748b", border: "1.5px solid #e2e8f0", borderRadius: "10px", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
+  submitBtn:          { padding: "11px 28px", background: "linear-gradient(135deg, #1448a8, #1e6fd9)", color: "white", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 4px 14px rgba(20,72,168,0.25)" },
 };

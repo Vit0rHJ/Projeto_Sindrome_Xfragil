@@ -24,8 +24,8 @@ const cadastrarPaciente = async (req, res) => {
             return res.status(409).json({ mensagem: 'CPF já cadastrado.' });
         }
 
-        await pool.query(
-            `INSERT INTO pacientes (
+      const [resultado] = await pool.query(
+    `INSERT INTO pacientes (...) VALUES (...)',
                 nome, cpf, data_nascimento, sexo, nome_mae, nome_pai,
                 email, telefone, whatsapp, telefone2, cidade, estado, pais,
                 nome_responsavel, cpf_responsavel, telefone_responsavel, grau_parentesco,
@@ -45,8 +45,8 @@ const cadastrarPaciente = async (req, res) => {
             ]
         );
 
-        return res.status(201).json({ mensagem: 'Paciente cadastrado com sucesso.' });
-
+        return res.status(201).json({ mensagem: 'Paciente cadastrado com sucesso.', 
+            id: resultado.insertId });
     } catch (erro) {
         console.error('Erro ao cadastrar paciente:', erro);
         return res.status(500).json({ mensagem: 'Erro interno do servidor.' });

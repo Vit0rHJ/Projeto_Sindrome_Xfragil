@@ -1,5 +1,5 @@
 BACKEND:
-SOBRE O LAUDO: vamos usar a biblioteca pdfkit que vai permitir agente criar pedf direto pelo node.js, No nosso projeto ele vai gerar o laudo da consulta com os dados do paciente, os sintomas marcados no checklist, o score e o encaminhamento tudo num PDF que o médico pode baixar e enviar para outros médicos.
+ SOBRE O LAUDO: vamos usar a biblioteca pdfkit que vai permitir agente criar pedf direto pelo node.js, No nosso projeto ele vai gerar o laudo da consulta com os dados do paciente, os sintomas marcados no checklist, o score e o encaminhamento tudo num PDF que o médico pode baixar e enviar para outros médicos.
 OBS: secretaria, recebe checklist do responsavel, e tem acesso a dados gerais
 OBS IMPORTANTES PARA O PROJETO:
 admin ve todos os pacintes e consultas/ medico ve apenas seus proprios pacintes/ e o score do primeiro checklist feito pelo vresponsavel nao aparece para ele.

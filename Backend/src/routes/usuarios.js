@@ -6,6 +6,7 @@ const {
   editarMedico,
   desativarMedico,
   atualizarFotoMedico,
+  cadastrarSecretaria,
 } = require("../controllers/usuarios"); // vao impoetar as duas  funcoes que montamos no controller
 const { autenticar, apenasAdmin } = require("../middlewares/auth"); //  vai importar os middlewares de autenticar e apenasAdmin pra proteger as rotas, so o admin pode cadastrar medico e listar os medicos, entao as duas rotas vao ter os dois middlewares, primeiro a gente verifica se ta logado e depois se é admin
 const upload = require("../utils/upload"); //o middleware do multer que processa um unico arquivo. foto é o nome do campo que o front vai usar para enviar a mensagem
@@ -20,4 +21,5 @@ router.patch(
   upload.single("foto"),
   atualizarFotoMedico,
 );
+router.post("/secretaria", autenticar, apenasAdmin, cadastrarSecretaria); // so o admin pode cadastrar secretaria
 module.exports = router;

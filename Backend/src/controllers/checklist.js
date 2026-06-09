@@ -28,10 +28,9 @@ const salvarChecklist = async (req, res) => {
     let consulta; // estamos usando o let aqui porque a variavel consulta vai ser atribuida dentro do if, se fosse const daria erro porque a const precisa ser atribuida no momento da declaracao, e como a gente tem essa condicao de verificacao diferente pra medico e responsavel, a gente nao consegue atribuir a consulta no momento da declaracao, entao a gente declara ela como let sem valor, e depois dentro do if a gente atribui o valor dela com o resultado da query correta dependendo do perfil do usuario
 
     if (req.usuario.perfil === "responsavel") {
+      // quando o responsavel cria a consulta, o medico_id fica com o id dele ate a secretaria atribuir um medico
       [consulta] = await pool.query(
-        `SELECT c.id FROM consultas c 
-         JOIN pacientes p ON p.id = c.paciente_id 
-         WHERE c.id = ? AND p.responsavel_id = ?`,
+        "SELECT id FROM consultas WHERE id = ? AND medico_id = ?",
         [consulta_id, req.usuario.id],
       );
     } else {

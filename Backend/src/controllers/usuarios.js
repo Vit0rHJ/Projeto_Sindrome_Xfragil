@@ -118,6 +118,37 @@ const { novo_medico_id } = req.body;
 };
 
 
+const cadastrarSecretaria = async (req, res) => {
+  const { nome, email, senha } = req.body;
+
+  if (!nome || !email || !senha) {
+    return res.status(400).json({ mensagem: "Nome, email e senha são obrigatórios." });
+  }
+
+  try {
+    const [existente] = await pool.query(
+      "SELECT id FROM usuarios WHERE email = ?",
+      [email],
+    );
+
+    if (existente.length > 0) {
+      return res.status(409).json({ mensagem: "Email já cadastrado." });
+    }
+
+    const senha_hash = await bcrypt.hash(senha, 10);
+
+    await pool.query(
+      'INSERT INTO usuarios (nome, email, senha_hash, perfil) VALUES (?, ?, ?, "secretaria")',
+      [nome, email, senha_hash],
+    );
+
+    return res.status(201).json({ mensagem: "Secretaria cadastrada com sucesso." });
+  } catch (erro) {
+    console.error("Erro no cadastro da secretaria:", erro);
+    return res.status(500).json({ mensagem: "Erro interno do servidor." });
+  }
+};
+
 const atualizarFotoMedico = async (req, res) => {
     const { id } = req.params;
 
@@ -163,4 +194,5 @@ module.exports = {
   editarMedico,
   desativarMedico,
   atualizarFotoMedico,
+  cadastrarSecretaria,
 };

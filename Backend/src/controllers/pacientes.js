@@ -96,4 +96,4 @@ const buscarPorCpf = async (req, res) => {
         return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
     }
 };
-module.exports = { cadastrarPaciente, listarPacientes };
+module.exports = { cadastrarPaciente, listarPacientes, buscarPorCpf, };

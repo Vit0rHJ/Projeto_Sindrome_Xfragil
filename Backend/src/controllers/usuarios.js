@@ -36,7 +36,7 @@ const listarMedicos = async (req, res) => {
   // busca todos os usuarios com perfil medico, e devolve os dados basicos deles, sem a senha claro, pra que o admin possa ver a lista de medicos cadastrados no sistema, essa rota pode ser acessada por qualquer usuario logado, nao precisa ser admin, entao nao precisa do middleware de apenasAdmin, mas precisa do middleware de autenticar pra verificar se ta logado
   try {
     const [medicos] = await pool.query(
-      'SELECT id, nome, email, crm, especialidade, criado_em FROM usuarios WHERE perfil = "medico"',
+      'SELECT id, nome, email, crm, especialidade, criado_em FROM usuarios WHERE perfil = "medico" AND ativo = 1',
     );
 
     return res.status(200).json(medicos);
@@ -62,19 +62,28 @@ const editarMedico = async (req, res) => {
     return res.status(500).json({ mensagem: "Erro interno do servidor." });
   }
 };
-//para deletar medicos
-const deletarMedico = async (req, res) => {
+//para desativar medicos, eu decidi que seria melhor apenas deixar medicos como inativos em vez de apagalos completamente do sistema para preservar o historico
+const desativarMedico = async (req, res) => {
   const { id } = req.params; // vai pegar o id do medico que vem da url
 
   try {
-    await pool.query(
-      'DELETE FROM usuarios WHERE id = ? AND perfil = "medico"',
+    const [medico] = await pool.query(
+      'SELECT id FROM usuarios WHERE id = ? AND perfil = "medico"',
       [id],
     );
 
-    return res.status(200).json({ mensagem: "Médico removido com sucesso." });
+    if (medico.length === 0) {
+      return res.status(404).json({ mensagem: "Médico não encontrado." });
+    }
+
+    await pool.query(
+      'UPDATE usuarios SET ativo = 0 WHERE id = ?',
+      [id],
+    );
+
+    return res.status(200).json({ mensagem: "Médico desativado com sucesso." });
   } catch (erro) {
-    console.error("Erro ao deletar médico:", erro);
+    console.error("Erro ao desativar médico:", erro);
     return res.status(500).json({ mensagem: "Erro interno do servidor." });
   }
 };
@@ -83,5 +92,5 @@ module.exports = {
   cadastrarMedico,
   listarMedicos,
   editarMedico,
-  deletarMedico,
+  desativarMedico,
 };

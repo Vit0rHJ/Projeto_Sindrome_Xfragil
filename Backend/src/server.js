@@ -12,7 +12,7 @@ app.use("/api/pacientes", require("./routes/pacientes")); //todas as rotas de pa
 app.use("/api/consultas", require("./routes/consultas")); //todas as rotas de consultas vao começar com /api/consultas, e a gente importa as rotas do arquivo consultas.js
 app.use("/api/checklist", require("./routes/checklist")); //todas as rotas de checklist vao começar com /api/checklist, e a gente importa as rotas do arquivo checklist.js
 app.use("/api/laudos", require("./routes/laudos")); //todas as rotas de laudos  vao começar com /api/laudos, e a gente importa as rotas do arquivo laudos.js
-
+app.use("/api/secretaria", require("./routes/secretaria")); // todas as rotas de secretaria vao começar com /api/secretaria, e a gente importa as rotas do arquivo secretaria.js, que tem as rotas especificas pra secretaria, como listar os prechecklist pendentes e direcionar os pacientes pros medicos, essas rotas sao protegidas por um middleware que permite o acesso tanto pro admin quanto pra secretaria, entao o admin tambem pode acessar essas rotas se quiser, mas o medico nao pode acessar essas rotas, porque elas sao especificas pra secretaria e admin, entao a gente garante que os medicos nao vao conseguir acessar as rotas da secretaria usando esse middleware
 //a gente vai criar as rotas de pacientes e consultas depois, mas a ideia é a mesma, a gente cria um arquivo pra cada grupo de rotas, e importa elas aqui, e depois usa elas com o app.use, assim a gente organiza melhor o código, cada rota vai ficar em um arquivo diferente
 const pool = require("./config/db");
 

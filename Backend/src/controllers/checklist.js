@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 
 const salvarChecklist = async (req, res) => {
-    const { consulta_id, preenchido_por,
+    const { consulta_id, preenchido_por, observacoes,
         sin_atraso_fala, sin_dif_aprendizado, sin_deficit_atencao,
         sin_def_intelectual, sin_hiperatividade, sin_agressividade,
         sin_evita_contato_visual, sin_evita_contato_fisico,
@@ -34,15 +34,15 @@ const salvarChecklist = async (req, res) => {
 
         await pool.query(
             `INSERT INTO checklist (
-                consulta_id, preenchido_por,
+                consulta_id, preenchido_por, observacoes,
                 sin_atraso_fala, sin_dif_aprendizado, sin_deficit_atencao,
                 sin_def_intelectual, sin_hiperatividade, sin_agressividade,
                 sin_evita_contato_visual, sin_evita_contato_fisico,
                 sin_movimentos_repetitivos, sin_frouxidao,
                 sin_macroquidia, sin_face_alongada
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                consulta_id, preenchido_por || 'medico', // se nao informarem vamos assumir que foi o medico que preencheu
+                consulta_id, preenchido_por || 'medico', observacoes || null,
                 sin_atraso_fala || 0, sin_dif_aprendizado || 0, sin_deficit_atencao || 0,
                 sin_def_intelectual || 0, sin_hiperatividade || 0, sin_agressividade || 0,
                 sin_evita_contato_visual || 0, sin_evita_contato_fisico || 0,
@@ -58,6 +58,7 @@ const salvarChecklist = async (req, res) => {
 
         return res.status(201).json({
             mensagem: 'Checklist salvo com sucesso.',
+            consulta_id: Number(consulta_id),
             score_total: resultado[0].score_total,
             encaminhamento: resultado[0].encaminhamento
         });

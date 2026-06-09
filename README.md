@@ -1,5 +1,5 @@
 BACKEND:
-SOBRE O LAUDO: vamos usar a biblioteca pdfkit que vai permitir agente criar pedf direto pelo node.js, No nosso projeto ele vai gerar o laudo da consulta com os dados do paciente, os sintomas marcados no checklist, o score e o encaminhamento tudo num PDF que o médico pode baixar e enviar para outros médicos.
+ SOBRE O LAUDO: vamos usar a biblioteca pdfkit que vai permitir agente criar pedf direto pelo node.js, No nosso projeto ele vai gerar o laudo da consulta com os dados do paciente, os sintomas marcados no checklist, o score e o encaminhamento tudo num PDF que o médico pode baixar e enviar para outros médicos.
 OBS: secretaria, recebe checklist do responsavel, e tem acesso a dados gerais
 OBS IMPORTANTES PARA O PROJETO:
 admin ve todos os pacintes e consultas/ medico ve apenas seus proprios pacintes/ e o score do primeiro checklist feito pelo vresponsavel nao aparece para ele.
@@ -45,6 +45,9 @@ Controller e rota de checklist
 Controller e rota de laudos — gerar o PDF do laudo.
 
 BANCO DE DADOS:
+USAR ISSO PARA RODAR O MARIA DB: & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root
+
+
 por enquanto estamos utilizando o MysqlServer, ele fica rodando em segundo plano na maquina na porta 3306, e existe independente de qualquer ferramente,OBS: estamos utilizando o proprio mysqlserver para fazer os testes, o mysql2 é a biblioteca do node que estamos usando para falar com o mysqlservrer diretamente sem ter que abrir o workbench diretamente.
 depois de alguns novos requesitos terem sido feitos o banco teve que ser alterado, atulamente estao com a modelagem completa(usuarios, pacientes, consultas, checklist, laudos).
 as viws para consultas simplificadas (vw_consulta_completa, vw_checklist_resumo).

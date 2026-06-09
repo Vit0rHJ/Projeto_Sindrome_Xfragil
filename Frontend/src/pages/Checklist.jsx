@@ -1,257 +1,204 @@
-import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { salvarChecklist, buscarChecklist } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
-const API = "http://localhost:3001";
-const authHeaders = () => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${localStorage.getItem("token")}`,
-});
-
-// 12 sintomas exatos do banco (colunas sin_* da tabela checklist)
 const SINTOMAS = [
-  { id: "sin_macroquidia",          label: "Macroquidia",                  desc: "Testículos aumentados (pós-puberdade, em meninos)" },
-  { id: "sin_face_alongada",        label: "Face alongada",                desc: "Rosto comprido, características faciais típicas da síndrome" },
-  { id: "sin_orelhas_proeminentes", label: "Orelhas proeminentes",         desc: "Orelhas grandes ou salientes" },
-  { id: "sin_prognatismo",          label: "Prognatismo",                  desc: "Mandíbula projetada para frente" },
-  { id: "sin_hipotonia",            label: "Hipotonia muscular",           desc: "Tônus muscular reduzido, flacidez" },
-  { id: "sin_frouxidao",            label: "Frouxidão ligamentar",         desc: "Articulações com mobilidade excessiva (hipermobilidade)" },
-  { id: "sin_palato_ogival",        label: "Palato ogival",                desc: "Céu da boca em formato de arco elevado" },
-  { id: "sin_def_intelectual",      label: "Deficiência intelectual",      desc: "Dificuldades de aprendizagem e desenvolvimento cognitivo" },
-  { id: "sin_atraso_fala",          label: "Atraso na fala / linguagem",   desc: "Desenvolvimento tardio ou ausente da comunicação verbal" },
-  { id: "sin_hiperatividade",       label: "Hiperatividade / TDAH",        desc: "Agitação, impulsividade e déficit de atenção" },
-  { id: "sin_autismo",              label: "Comportamento autista (TEA)",   desc: "Características do espectro autista" },
-  { id: "sin_ansiedade",            label: "Ansiedade",                    desc: "Transtornos de ansiedade significativos" },
+  { key: 'sin_atraso_fala',           label: 'Atraso na fala',                     desc: 'Atraso no desenvolvimento da linguagem oral' },
+  { key: 'sin_dif_aprendizado',       label: 'Dificuldade de aprendizado',         desc: 'Dificuldades escolares ou de compreensão' },
+  { key: 'sin_deficit_atencao',       label: 'Déficit de atenção',                 desc: 'Dificuldade de manter foco e atenção' },
+  { key: 'sin_def_intelectual',       label: 'Deficiência intelectual',            desc: 'Comprometimento cognitivo global' },
+  { key: 'sin_hiperatividade',        label: 'Hiperatividade',                     desc: 'Agitação motora e impulsividade excessiva' },
+  { key: 'sin_agressividade',         label: 'Agressividade',                      desc: 'Comportamentos agressivos fora do padrão esperado' },
+  { key: 'sin_evita_contato_visual',  label: 'Evita contato visual',              desc: 'Dificuldade ou recusa em manter contato com os olhos' },
+  { key: 'sin_evita_contato_fisico',  label: 'Evita contato físico',              desc: 'Hipersensibilidade ao toque' },
+  { key: 'sin_movimentos_repetitivos',label: 'Movimentos repetitivos',            desc: 'Estereotipias motoras como abanar as mãos' },
+  { key: 'sin_frouxidao',             label: 'Frouxidão muscular (hipotonia)',     desc: 'Musculatura flácida, articulações hiperextensíveis' },
+  { key: 'sin_macroquidia',           label: 'Macroorquidia',                     desc: 'Testículos aumentados (observado após puberdade em meninos)' },
+  { key: 'sin_face_alongada',         label: 'Face alongada / orelhas proeminentes', desc: 'Características faciais típicas da síndrome' },
 ];
 
-const encaminhamentoConfig = {
-  observacao: {
-    label: "Observação",
-    desc: "Score baixo (≤ 3). Monitoramento clínico recomendado.",
-    color: "#1448a8",
-    bg: "#eff6ff",
-    border: "#bfdbfe",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-    ),
-  },
-  auxilio_clinico: {
-    label: "Auxílio Clínico",
-    desc: "Score moderado (4–7). Encaminhamento para especialista recomendado.",
-    color: "#0f3494",
-    bg: "#dbeafe",
-    border: "#93c5fd",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-      </svg>
-    ),
-  },
-  medicacao: {
-    label: "Medicação",
-    desc: "Score alto (≥ 8). Avaliação para tratamento medicamentoso e investigação genética.",
-    color: "#ffffff",
-    bg: "#1448a8",
-    border: "#0f3494",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M10.5 20H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H20a2 2 0 0 1 2 2v3"/>
-        <circle cx="18" cy="18" r="4"/><path d="M15.6 15.6l4.8 4.8"/>
-      </svg>
-    ),
-  },
-};
+const INIT_CHECKS = Object.fromEntries(SINTOMAS.map(s => [s.key, false]));
 
-export function Checklist() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const consultaId = searchParams.get("consulta_id");
+export default function Checklist() {
+  const { consultaId } = useParams();
+  const navigate       = useNavigate();
+  const { canViewAll } = useAuth();
 
-  const [marcados, setMarcados] = useState({});
-  const [resultado, setResultado] = useState(null);
+  const [checks, setChecks]   = useState(INIT_CHECKS);
+  const [comentario, setComentario] = useState('');
+  const [observacoes, setObservacoes] = useState('');
+  const [preenchidoPor, setPreenchidoPor] = useState('medico');
   const [loading, setLoading] = useState(false);
-  const [erro, setErro] = useState("");
+  const [existing, setExisting] = useState(null);
+  const [loadingExist, setLoadingExist] = useState(true);
+  const [erro, setErro] = useState('');
 
-  function toggleSintoma(id) {
-    if (resultado) return;
-    setMarcados(prev => ({ ...prev, [id]: !prev[id] }));
-  }
+  useEffect(() => {
+    buscarChecklist(consultaId)
+      .then(data => setExisting(data))
+      .catch(() => setExisting(null))
+      .finally(() => setLoadingExist(false));
+  }, [consultaId]);
 
-  const totalMarcados = Object.values(marcados).filter(Boolean).length;
+  const toggle = (key) => setChecks(prev => ({ ...prev, [key]: !prev[key] }));
+  const score  = Object.values(checks).filter(Boolean).length;
 
-  async function handleSubmit() {
-    if (!consultaId) {
-      setErro("Nenhuma consulta selecionada. Cadastre um paciente primeiro.");
-      return;
-    }
-    setLoading(true);
-    setErro("");
+  const getScoreClass = () => {
+    if (score <= 3)  return 'low';
+    if (score <= 7)  return 'medium';
+    return 'high';
+  };
+
+  const getEncaminhamento = () => {
+    if (score <= 3)  return { label: 'Baixa suspeita', color: 'var(--teal)', msg: 'Score baixo. Acompanhamento clínico regular recomendado.' };
+    if (score <= 7)  return { label: 'Suspeita moderada', color: '#856404', msg: 'Score moderado. Recomenda-se avaliação especializada.' };
+    return { label: 'Alta suspeita — encaminhar para genética', color: 'var(--danger)', msg: 'Score alto. Encaminhamento urgente para genética médica recomendado.' };
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErro(''); setLoading(true);
     try {
-      // Monta o body com cada sin_* como boolean
-      const body = { consulta_id: Number(consultaId) };
-      SINTOMAS.forEach(s => { body[s.id] = !!marcados[s.id]; });
-
-      const res = await fetch(`${API}/api/checklist`, {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify(body),
+      await salvarChecklist({
+        consulta_id: Number(consultaId),
+        preenchido_por: preenchidoPor,
+        comentario,
+        observacoes,
+        ...Object.fromEntries(Object.entries(checks).map(([k, v]) => [k, v ? 1 : 0])),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Erro ao salvar checklist");
-      setResultado(data);
-    } catch (err) {
-      setErro(err.message);
+      navigate(`/laudo/${consultaId}`);
+    } catch (e) {
+      setErro(e.message);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  const enc = resultado?.encaminhamento ? encaminhamentoConfig[resultado.encaminhamento] : null;
+  if (loadingExist) return <div className="loading-wrap"><div className="spinner"></div><p>Verificando checklist...</p></div>;
 
-  return (
-    <div style={styles.page}>
-      <div style={styles.pageHeader}>
-        <h1 style={styles.title}>Checklist de Sintomas</h1>
-        <p style={styles.subtitle}>
-          {consultaId
-            ? `Consulta #${consultaId} — marque os sintomas observados no paciente`
-            : "⚠️ Nenhuma consulta selecionada — acesse pelo cadastro do paciente"}
-        </p>
+  if (existing) return (
+    <div>
+      <div className="page-header">
+        <h2>Checklist — Consulta #{consultaId}</h2>
       </div>
-
-      {/* Barra de progresso */}
-      <div style={styles.progressCard}>
-        <div style={styles.progressHeader}>
-          <span style={styles.progressLabel}>{totalMarcados} de {SINTOMAS.length} sintomas marcados</span>
-          <span style={styles.progressPercent}>{Math.round((totalMarcados / SINTOMAS.length) * 100)}%</span>
-        </div>
-        <div style={styles.progressTrack}>
-          <div style={{ ...styles.progressFill, width: `${(totalMarcados / SINTOMAS.length) * 100}%` }} />
-        </div>
-      </div>
-
-      {/* Grid de sintomas */}
-      {!resultado && (
-        <div style={styles.sintomasGrid}>
-          {SINTOMAS.map((s) => {
-            const checked = !!marcados[s.id];
-            return (
-              <div
-                key={s.id}
-                onClick={() => toggleSintoma(s.id)}
-                style={{
-                  ...styles.sintomaCard,
-                  border: checked ? "1.5px solid #1448a8" : "1.5px solid #e2e8f0",
-                  background: checked ? "#eff6ff" : "white",
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{
-                  ...styles.checkbox,
-                  background: checked ? "#1448a8" : "white",
-                  border: checked ? "none" : "2px solid #cbd5e1",
-                }}>
-                  {checked && (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                  )}
-                </div>
-                <div style={styles.sintomaInfo}>
-                  <span style={{ ...styles.sintomaLabel, color: checked ? "#1448a8" : "#1e293b" }}>
-                    {s.label}
-                  </span>
-                  <span style={styles.sintomaDesc}>{s.desc}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Resultado */}
-      {resultado && enc && (
-        <div style={{ ...styles.resultCard, background: enc.bg, border: `1.5px solid ${enc.border}` }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
-            <div style={{
-              width: "48px", height: "48px", borderRadius: "12px",
-              background: "rgba(255,255,255,0.25)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: enc.color, flexShrink: 0,
-            }}>
-              {enc.icon}
-            </div>
-            <div>
-              <p style={{ fontSize: "12px", fontWeight: 700, color: enc.color, letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 4px 0" }}>
-                Encaminhamento gerado — score: {resultado.score_total ?? totalMarcados}/12
-              </p>
-              <h3 style={{ fontSize: "22px", fontWeight: 700, color: enc.color === "#ffffff" ? "white" : "#0a2560", margin: "0 0 6px 0", fontFamily: "'Playfair Display', serif" }}>
-                {enc.label}
-              </h3>
-              <p style={{ fontSize: "14px", color: enc.color === "#ffffff" ? "rgba(255,255,255,0.85)" : "#475569", margin: 0 }}>{enc.desc}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {erro && (
-        <div style={styles.errorBox}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          {erro}
-        </div>
-      )}
-
-      {/* Ações */}
-      <div style={styles.actions}>
-        {!resultado ? (
-          <>
-            <button onClick={() => navigate("/home")} style={styles.cancelBtn}>Cancelar</button>
-            <button
-              onClick={handleSubmit}
-              disabled={loading || totalMarcados === 0 || !consultaId}
-              style={{ ...styles.submitBtn, opacity: (totalMarcados === 0 || !consultaId) ? 0.5 : 1 }}
-            >
-              {loading ? "Salvando..." : `Gerar Encaminhamento (${totalMarcados})`}
-            </button>
-          </>
-        ) : (
-          <>
-            <button onClick={() => navigate("/home")} style={styles.cancelBtn}>Voltar ao Início</button>
-            {resultado.consulta_id && (
-              <button onClick={() => navigate(`/laudo/${resultado.consulta_id}`)} style={styles.submitBtn}>
-                Ver Laudo Completo
-              </button>
-            )}
-          </>
-        )}
+      <div className="alert alert-warn">Este checklist já foi preenchido para esta consulta.</div>
+      <div style={{ display: 'flex', gap: '1rem' }}>
+        <button className="btn-primary" onClick={() => navigate(`/laudo/${consultaId}`)}>Ver Laudo →</button>
+        <button className="btn-secondary" onClick={() => navigate('/dashboard')}>← Voltar ao Dashboard</button>
       </div>
     </div>
   );
-}
 
-const styles = {
-  page:            { display: "flex", flexDirection: "column", gap: "24px" },
-  pageHeader:      {},
-  title:           { fontFamily: "'Playfair Display', serif", fontSize: "26px", fontWeight: 700, color: "#0a2560", margin: "0 0 6px 0" },
-  subtitle:        { fontSize: "14px", color: "#64748b", margin: 0 },
-  progressCard:    { background: "white", borderRadius: "14px", padding: "20px 24px", border: "1px solid #e8f0fe", boxShadow: "0 2px 12px rgba(20,72,168,0.06)" },
-  progressHeader:  { display: "flex", justifyContent: "space-between", marginBottom: "10px" },
-  progressLabel:   { fontSize: "13px", color: "#64748b", fontWeight: 500 },
-  progressPercent: { fontSize: "13px", fontWeight: 700, color: "#1448a8" },
-  progressTrack:   { height: "8px", background: "#e8f0fe", borderRadius: "999px", overflow: "hidden" },
-  progressFill:    { height: "100%", background: "linear-gradient(90deg, #1448a8, #1e6fd9)", borderRadius: "999px", transition: "width 0.3s ease" },
-  sintomasGrid:    { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "12px" },
-  sintomaCard:     { display: "flex", alignItems: "flex-start", gap: "12px", padding: "16px", borderRadius: "12px", transition: "all 0.15s", userSelect: "none" },
-  checkbox:        { width: "22px", height: "22px", borderRadius: "6px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginTop: "1px", transition: "all 0.15s" },
-  sintomaInfo:     { display: "flex", flexDirection: "column", gap: "3px" },
-  sintomaLabel:    { fontSize: "14px", fontWeight: 600, lineHeight: 1.3 },
-  sintomaDesc:     { fontSize: "12px", color: "#94a3b8", lineHeight: 1.4 },
-  resultCard:      { borderRadius: "16px", padding: "24px 28px" },
-  errorBox:        { display: "flex", alignItems: "center", gap: "8px", padding: "12px 16px", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "10px", color: "#e11d48", fontSize: "13px" },
-  actions:         { display: "flex", justifyContent: "flex-end", gap: "12px", paddingTop: "4px" },
-  cancelBtn:       { padding: "11px 24px", background: "transparent", color: "#64748b", border: "1.5px solid #e2e8f0", borderRadius: "10px", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
-  submitBtn:       { padding: "11px 28px", background: "linear-gradient(135deg, #1448a8, #1e6fd9)", color: "white", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 4px 14px rgba(20,72,168,0.25)" },
-};
+  const enc = getEncaminhamento();
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <h2>Checklist de Sintomas</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 2 }}>Consulta #{consultaId} — marque todos os sintomas observados</p>
+        </div>
+        <button className="btn-secondary" onClick={() => navigate('/dashboard')}>← Voltar</button>
+      </div>
+
+      {erro && <div className="alert alert-error">{erro}</div>}
+
+      <form onSubmit={handleSubmit}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '1.5rem', alignItems: 'start' }}>
+          <div>
+            <div className="card" style={{ marginBottom: '1rem' }}>
+              <div className="section-title">Sintomas</div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {SINTOMAS.map(s => (
+                  <div
+                    key={s.key}
+                    className={`symptom-item ${checks[s.key] ? 'checked' : ''}`}
+                    onClick={() => toggle(s.key)}
+                  >
+                    <input type="checkbox" checked={checks[s.key]} onChange={() => toggle(s.key)} onClick={e => e.stopPropagation()} />
+                    <div>
+                      <div className="symptom-label">{s.label}</div>
+                      <div className="symptom-desc">{s.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="section-title">Observações e Comentários</div>
+              <div className="form-group">
+                <label>Preenchido por</label>
+                <select value={preenchidoPor} onChange={e => setPreenchidoPor(e.target.value)}>
+                  <option value="medico">Médico(a)</option>
+                  <option value="secretaria">Secretaria</option>
+                  <option value="responsavel">Responsável pelo paciente</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Comentário adicional (opcional)</label>
+                <textarea
+                  value={comentario}
+                  onChange={e => setComentario(e.target.value)}
+                  rows={4}
+                  placeholder="Observações clínicas, contexto familiar, comportamentos adicionais relevantes..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Painel lateral de score */}
+          <div style={{ position: 'sticky', top: '1rem' }}>
+            <div className={`score-box ${getScoreClass()}`} style={{ marginBottom: '1rem' }}>
+              <div className="score-num" style={{ color: enc.color }}>{score}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>de 12 sintomas</div>
+              <div style={{ marginTop: '0.75rem', fontWeight: 600, fontSize: 14, color: enc.color }}>{enc.label}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.4 }}>{enc.msg}</div>
+            </div>
+
+            <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '1rem', marginBottom: '1rem' }}>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                {SINTOMAS.filter(s => checks[s.key]).length === 0
+                  ? 'Nenhum sintoma marcado ainda.'
+                  : `${SINTOMAS.filter(s => checks[s.key]).length} sintoma(s) selecionado(s):`
+                }
+              </p>
+              <ul style={{ paddingLeft: '1rem', listStyle: 'disc' }}>
+                {SINTOMAS.filter(s => checks[s.key]).map(s => (
+                  <li key={s.key} style={{ fontSize: 13, color: 'var(--text)', marginBottom: 3 }}>{s.label}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '1rem', marginBottom: '1rem' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '8px' }}>
+                Observações do médico
+              </label>
+              <textarea
+                value={observacoes}
+                onChange={e => setObservacoes(e.target.value)}
+                placeholder="Anote observações clínicas relevantes..."
+                style={{
+                  width: '100%',
+                  minHeight: '100px',
+                  padding: '12px 14px',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontFamily: "'DM Sans', sans-serif",
+                  resize: 'vertical',
+                  outline: 'none',
+                }}
+              />
+            </div>
+
+            <button type="submit" className="btn-primary" disabled={loading} style={{ width: '100%', padding: '12px' }}>
+              {loading ? 'Salvando...' : 'Salvar e ver laudo →'}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}

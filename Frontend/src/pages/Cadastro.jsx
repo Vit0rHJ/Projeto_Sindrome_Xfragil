@@ -1,194 +1,221 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { cadastrarPaciente } from '../services/api';
 
-const API = "http://localhost:3001";
-const authHeaders = () => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${localStorage.getItem("token")}`,
-});
+const ESTADOS_BR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
-function Field({ label, children, required }) {
-  return (
-    <div style={fieldStyles.group}>
-      <label style={fieldStyles.label}>
-        {label}
-        {required && <span style={{ color: "#e11d48", marginLeft: "3px" }}>*</span>}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-const fieldStyles = {
-  group: { display: "flex", flexDirection: "column", gap: "6px" },
-  label: { fontSize: "13px", fontWeight: 600, color: "#374151" },
+const EMPTY = {
+  nome: '', cpf: '', data_nascimento: '', sexo: '',
+  nome_mae: '', nome_pai: '',
+  nome_responsavel: '', cpf_responsavel: '',
+  telefone_responsavel: '', grau_parentesco: '',
+  email: '', telefone: '', whatsapp: '', telefone2: '',
+  cidade: '', estado: '', pais: 'Brasil',
+  ja_fez_exame_dna: 0, interesse_exame_pcr: 0, resultado_exame: null,
+  diagnostico_autismo: 0, tem_irmaos: 0,
+  historico_familiar_di: 'nao', historico_menopausa: 'nao', historico_ataxia: 'nao',
 };
 
-const inputStyle = {
-  padding: "11px 14px",
-  border: "1.5px solid #e2e8f0",
-  borderRadius: "10px",
-  fontSize: "14px",
-  color: "#1e293b",
-  background: "#f8faff",
-  fontFamily: "'DM Sans', sans-serif",
-  outline: "none",
-  width: "100%",
-  boxSizing: "border-box",
-};
-
-export function Cadastro() {
+export default function CadastroPaciente() {
   const navigate = useNavigate();
+  const [form, setForm]     = useState(EMPTY);
+  const [erro, setErro]     = useState('');
+  const [sucesso, setSucesso] = useState('');
   const [loading, setLoading] = useState(false);
-  const [erro, setErro] = useState("");
-  const [form, setForm] = useState({
-    nome: "", cpf: "", data_nascimento: "", email: "", telefone: "",
-    nome_responsavel: "", cpf_responsavel: "", telefone_responsavel: "",
-  });
 
-  function handleChange(e) {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    setErro("");
-  }
+  const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setErro(''); setSucesso('');
+    if (!form.nome || !form.cpf || !form.nome_responsavel || !form.cpf_responsavel || !form.telefone_responsavel) {
+      setErro('Preencha os campos obrigatórios (*).');
+      return;
+    }
     setLoading(true);
-    setErro("");
     try {
-      // 1. Cadastrar paciente
-      const resPac = await fetch(`${API}/api/pacientes`, {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify(form),
-      });
-      const pacData = await resPac.json();
-      if (!resPac.ok) throw new Error(pacData.message || "Erro ao cadastrar paciente");
-
-      const paciente_id = pacData.id ?? pacData.paciente?.id;
-      if (!paciente_id) throw new Error("ID do paciente não retornado pela API");
-
-      // 2. Criar consulta vinculada ao paciente
-      const resConsulta = await fetch(`${API}/api/consultas`, {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({
-          paciente_id,
-          data_consulta: new Date().toISOString().split("T")[0],
-        }),
-      });
-      const consultaData = await resConsulta.json();
-      if (!resConsulta.ok) throw new Error(consultaData.message || "Erro ao criar consulta");
-
-      const consulta_id = consultaData.id ?? consultaData.consulta?.id;
-      if (!consulta_id) throw new Error("ID da consulta não retornado pela API");
-
-      // 3. Ir direto para o checklist com o consulta_id
-      navigate(`/checklist?consulta_id=${consulta_id}`);
-    } catch (err) {
-      setErro(err.message);
+      await cadastrarPaciente(form);
+      setSucesso('Paciente cadastrado com sucesso!');
+      setTimeout(() => navigate('/pacientes'), 1500);
+    } catch (e) {
+      setErro(e.message);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.pageHeader}>
-        <h1 style={styles.title}>Novo Cadastro de Paciente</h1>
-        <p style={styles.subtitle}>Preencha os dados para registrar um novo paciente e iniciar o checklist</p>
+    <div>
+      <div className="page-header">
+        <div>
+          <h2>Cadastrar Paciente</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 2 }}>Preencha os dados do paciente para cadastro no sistema</p>
+        </div>
+        <button className="btn-secondary" onClick={() => navigate('/pacientes')}>← Voltar</button>
       </div>
 
-      <div style={styles.card}>
-        <form onSubmit={handleSubmit}>
+      {erro    && <div className="alert alert-error">{erro}</div>}
+      {sucesso && <div className="alert alert-success">{sucesso}</div>}
 
-          {/* Dados do paciente */}
-          <div style={styles.sectionBlock}>
-            <div style={styles.sectionBlockHeader}>
-              <div style={styles.sectionIcon}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                </svg>
+      <form onSubmit={handleSubmit}>
+        {/* Dados pessoais */}
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <div className="section-title">Dados Pessoais</div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Nome completo *</label>
+              <input value={form.nome} onChange={e => set('nome', e.target.value)} required />
+            </div>
+            <div className="form-group">
+              <label>CPF *</label>
+              <input value={form.cpf} onChange={e => set('cpf', e.target.value)} placeholder="000.000.000-00" required />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Data de Nascimento</label>
+              <input type="date" value={form.data_nascimento} onChange={e => set('data_nascimento', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Sexo Biológico</label>
+              <select value={form.sexo} onChange={e => set('sexo', e.target.value)}>
+                <option value="">Selecione</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Feminino">Feminino</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Nome da Mãe</label>
+              <input value={form.nome_mae} onChange={e => set('nome_mae', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Nome do Pai</label>
+              <input value={form.nome_pai} onChange={e => set('nome_pai', e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        {/* Responsável */}
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <div className="section-title">Responsável</div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Nome do Responsável *</label>
+              <input value={form.nome_responsavel} onChange={e => set('nome_responsavel', e.target.value)} required />
+            </div>
+            <div className="form-group">
+              <label>CPF do Responsável *</label>
+              <input value={form.cpf_responsavel} onChange={e => set('cpf_responsavel', e.target.value)} placeholder="000.000.000-00" required />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Telefone do Responsável *</label>
+              <input value={form.telefone_responsavel} onChange={e => set('telefone_responsavel', e.target.value)} required />
+            </div>
+            <div className="form-group">
+              <label>Grau de Parentesco</label>
+              <select value={form.grau_parentesco} onChange={e => set('grau_parentesco', e.target.value)}>
+                <option value="">Selecione</option>
+                {['Mãe','Pai','Avó/Avô','Tia/Tio','Irmã/Irmão','Outro'].map(g => <option key={g}>{g}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Contato */}
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <div className="section-title">Contato e Localização</div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>WhatsApp</label>
+              <input value={form.whatsapp} onChange={e => set('whatsapp', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>E-mail</label>
+              <input type="email" value={form.email} onChange={e => set('email', e.target.value)} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Telefone 2</label>
+              <input value={form.telefone2} onChange={e => set('telefone2', e.target.value)} />
+            </div>
+            <div className="form-group"></div>
+          </div>
+          <div className="form-row-3">
+            <div className="form-group">
+              <label>Cidade</label>
+              <input value={form.cidade} onChange={e => set('cidade', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Estado</label>
+              <select value={form.estado} onChange={e => set('estado', e.target.value)}>
+                <option value="">UF</option>
+                {ESTADOS_BR.map(uf => <option key={uf}>{uf}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>País</label>
+              <input value={form.pais} onChange={e => set('pais', e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        {/* Histórico clínico */}
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <div className="section-title">Histórico Clínico</div>
+
+          {[
+            { label: 'Já fez exame de DNA? (PCR)', k: 'ja_fez_exame_dna' },
+            { label: 'Tem interesse em fazer exame de DNA?', k: 'interesse_exame_pcr' },
+            { label: 'Diagnóstico de autismo (TEA)?', k: 'diagnostico_autismo' },
+            { label: 'Tem irmãos?', k: 'tem_irmaos' },
+          ].map(({ label, k }) => (
+            <div className="form-group" key={k}>
+              <label>{label}</label>
+              <div className="radio-group">
+                <label><input type="radio" name={k} checked={form[k]===1||form[k]==='1'} onChange={() => set(k, 1)} style={{ width:'auto' }} /> Sim</label>
+                <label><input type="radio" name={k} checked={form[k]===0||form[k]==='0'} onChange={() => set(k, 0)} style={{ width:'auto' }} /> Não</label>
               </div>
-              <h2 style={styles.sectionBlockTitle}>Dados do Paciente</h2>
             </div>
-            <div style={styles.grid2}>
-              <Field label="Nome completo" required>
-                <input name="nome" value={form.nome} onChange={handleChange} required placeholder="Nome do paciente" style={inputStyle}/>
-              </Field>
-              <Field label="CPF" required>
-                <input name="cpf" value={form.cpf} onChange={handleChange} required placeholder="000.000.000-00" style={inputStyle}/>
-              </Field>
-              <Field label="Data de nascimento">
-                <input name="data_nascimento" type="date" value={form.data_nascimento} onChange={handleChange} style={inputStyle}/>
-              </Field>
-              <Field label="Telefone">
-                <input name="telefone" value={form.telefone} onChange={handleChange} placeholder="(00) 00000-0000" style={inputStyle}/>
-              </Field>
-              <Field label="E-mail" >
-                <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="email@exemplo.com" style={inputStyle}/>
-              </Field>
-            </div>
+          ))}
+
+          <div className="form-group">
+            <label>Resultado do exame (se já realizou)</label>
+            <select value={form.resultado_exame || ''} onChange={e => set('resultado_exame', e.target.value || null)}>
+              <option value="">— Não aplicável</option>
+              <option value="Mutação Completa (mais de 200 repetições)">Mutação Completa (+200 repetições)</option>
+              <option value="Pré-mutação (55 a 200 repetições)">Pré-mutação (55–200 repetições)</option>
+              <option value="Negativo (até 54 repetições)">Negativo (até 54 repetições)</option>
+            </select>
           </div>
 
-          {/* Dados do responsável */}
-          <div style={styles.sectionBlock}>
-            <div style={styles.sectionBlockHeader}>
-              <div style={styles.sectionIcon}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
+          {[
+            { label: 'Histórico familiar de deficiência intelectual / atraso na fala?', k: 'historico_familiar_di' },
+            { label: 'Parente feminina com menopausa precoce?', k: 'historico_menopausa' },
+            { label: 'Parente masculino com ataxia ou tremor?', k: 'historico_ataxia' },
+          ].map(({ label, k }) => (
+            <div className="form-group" key={k}>
+              <label>{label}</label>
+              <div className="radio-group">
+                {['sim','nao','nao_sei'].map(v => (
+                  <label key={v}><input type="radio" name={k} value={v} checked={form[k]===v} onChange={e => set(k, e.target.value)} style={{ width:'auto' }} /> {v==='sim'?'Sim':v==='nao'?'Não':'Não sei'}</label>
+                ))}
               </div>
-              <h2 style={styles.sectionBlockTitle}>Dados do Responsável</h2>
             </div>
-            <div style={styles.grid2}>
-              <Field label="Nome do responsável" required>
-                <input name="nome_responsavel" value={form.nome_responsavel} onChange={handleChange} required placeholder="Nome completo do responsável" style={inputStyle}/>
-              </Field>
-              <Field label="CPF do responsável" required>
-                <input name="cpf_responsavel" value={form.cpf_responsavel} onChange={handleChange} required placeholder="000.000.000-00" style={inputStyle}/>
-              </Field>
-              <Field label="Telefone do responsável" required>
-                <input name="telefone_responsavel" value={form.telefone_responsavel} onChange={handleChange} required placeholder="(00) 00000-0000" style={inputStyle}/>
-              </Field>
-            </div>
-          </div>
+          ))}
+        </div>
 
-          {erro && (
-            <div style={styles.errorBox}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              {erro}
-            </div>
-          )}
-
-          <div style={styles.actions}>
-            <button type="button" onClick={() => navigate("/home")} style={styles.cancelBtn}>Cancelar</button>
-            <button type="submit" disabled={loading} style={styles.submitBtn}>
-              {loading ? "Cadastrando..." : "Cadastrar e iniciar Checklist →"}
-            </button>
-          </div>
-        </form>
-      </div>
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+          <button type="button" className="btn-secondary" onClick={() => navigate('/pacientes')}>Cancelar</button>
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? 'Salvando...' : 'Cadastrar Paciente'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
-
-const styles = {
-  page:               { display: "flex", flexDirection: "column", gap: "24px", maxWidth: "860px" },
-  pageHeader:         {},
-  title:              { fontFamily: "'Playfair Display', serif", fontSize: "26px", fontWeight: 700, color: "#0a2560", margin: "0 0 6px 0" },
-  subtitle:           { fontSize: "14px", color: "#64748b", margin: 0 },
-  card:               { background: "white", borderRadius: "16px", border: "1px solid #e8f0fe", overflow: "hidden", boxShadow: "0 2px 12px rgba(20,72,168,0.06)" },
-  sectionBlock:       { padding: "28px 32px", borderBottom: "1px solid #f1f5f9" },
-  sectionBlockHeader: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" },
-  sectionIcon:        { width: "30px", height: "30px", borderRadius: "8px", background: "linear-gradient(135deg, #1448a8, #1e6fd9)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  sectionBlockTitle:  { fontSize: "15px", fontWeight: 700, color: "#0a2560", margin: 0 },
-  grid2:              { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" },
-  errorBox:           { display: "flex", alignItems: "center", gap: "8px", margin: "0 32px", padding: "12px 16px", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: "10px", color: "#e11d48", fontSize: "13px" },
-  actions:            { display: "flex", justifyContent: "flex-end", gap: "12px", padding: "24px 32px" },
-  cancelBtn:          { padding: "11px 24px", background: "transparent", color: "#64748b", border: "1.5px solid #e2e8f0", borderRadius: "10px", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
-  submitBtn:          { padding: "11px 28px", background: "linear-gradient(135deg, #1448a8, #1e6fd9)", color: "white", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 4px 14px rgba(20,72,168,0.25)" },
-};

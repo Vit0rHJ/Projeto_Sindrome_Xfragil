@@ -1,184 +1,168 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { buscarChecklist } from '../services/api';
 
-const API = "http://localhost:3001";
-const authHeaders = () => ({
-  Authorization: `Bearer ${localStorage.getItem("token")}`,
-});
+const SINTOMA_LABELS = {
+  sin_atraso_fala:           'Atraso na fala',
+  sin_dif_aprendizado:       'Dificuldade de aprendizado',
+  sin_deficit_atencao:       'Déficit de atenção',
+  sin_def_intelectual:       'Deficiência intelectual',
+  sin_hiperatividade:        'Hiperatividade',
+  sin_agressividade:         'Agressividade',
+  sin_evita_contato_visual:  'Evita contato visual',
+  sin_evita_contato_fisico:  'Evita contato físico',
+  sin_movimentos_repetitivos:'Movimentos repetitivos',
+  sin_frouxidao:             'Frouxidão muscular (hipotonia)',
+  sin_macroquidia:           'Macroorquidia',
+  sin_face_alongada:         'Face alongada / orelhas proeminentes',
+};
 
-function getUserFromToken() {
-  try { return JSON.parse(atob(localStorage.getItem("token").split(".")[1])); }
-  catch { return {}; }
-}
-
-export function Laudo() {
-  const { consulta_id } = useParams();
+export default function Laudo() {
+  const { consultaId } = useParams();
   const navigate = useNavigate();
-  const [laudo, setLaudo] = useState(null);
+  const printRef = useRef();
+
+  const [dados, setDados]   = useState(null);
   const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState("");
-  const medico = getUserFromToken();
+  const [erro, setErro]     = useState('');
 
   useEffect(() => {
-    fetch(`${API}/api/laudos/${consulta_id}`, { headers: authHeaders() })
-      .then(r => r.json())
-      .then(data => { if (data.error || data.message?.includes("não")) throw new Error(data.message); setLaudo(data); })
-      .catch(e => setErro(e.message || "Erro ao carregar laudo"))
+    buscarChecklist(consultaId)
+      .then(setDados)
+      .catch(e => setErro(e.message))
       .finally(() => setLoading(false));
-  }, [consulta_id]);
+  }, [consultaId]);
 
-  if (loading) return <div style={styles.center}><p style={{ color: "#64748b" }}>Carregando laudo...</p></div>;
-  if (erro)    return (
-    <div style={styles.center}>
-      <p style={{ color: "#e11d48", marginBottom: "16px" }}>⚠️ {erro}</p>
-      <button onClick={() => navigate("/home")} style={styles.backBtn}>← Voltar ao Início</button>
-    </div>
-  );
+  const handlePrint = () => window.print();
 
-  const paciente  = laudo?.paciente  || {};
-  const checklist = laudo?.checklist || {};
-  const consulta  = laudo?.consulta  || {};
-  const score     = checklist.score_total ?? 0;
-  const enc       = checklist.encaminhamento || "observacao";
+  if (loading) return <div className="loading-wrap"><div className="spinner"></div><p>Carregando laudo...</p></div>;
+  if (erro)    return <div><div className="alert alert-error">{erro}</div><button className="btn-secondary" onClick={() => navigate('/dashboard')}>← Voltar</button></div>;
+  if (!dados)  return <div><div className="alert alert-warn">Checklist não encontrado para esta consulta.</div><button className="btn-secondary" onClick={() => navigate('/dashboard')}>← Voltar</button></div>;
 
-  const encLabels = {
-    observacao:     { label: "Observação",    cor: "#1448a8", bg: "#eff6ff" },
-    auxilio_clinico:{ label: "Auxílio Clínico", cor: "#0f3494", bg: "#dbeafe" },
-    medicacao:      { label: "Medicação",     cor: "#ffffff", bg: "#1448a8" },
+  const sintomasPresentes = Object.entries(SINTOMA_LABELS).filter(([k]) => dados[k] === 1 || dados[k] === true);
+  const score = dados.score_total ?? sintomasPresentes.length;
+  const encaminhamento = dados.encaminhamento || (score >= 8 ? 'Encaminhar para genética médica' : score >= 4 ? 'Avaliação especializada recomendada' : 'Acompanhamento clínico regular');
+
+  const getScoreColor = () => {
+    if (score <= 3) return 'var(--teal)';
+    if (score <= 7) return '#856404';
+    return 'var(--danger)';
   };
-  const encCfg = encLabels[enc] || encLabels.observacao;
-
-  const dataConsulta = consulta.data_consulta
-    ? new Date(consulta.data_consulta).toLocaleDateString("pt-BR")
-    : new Date().toLocaleDateString("pt-BR");
 
   return (
-    <div style={styles.page}>
-      {/* Toolbar */}
-      <div style={styles.toolbar} className="no-print">
-        <button onClick={() => navigate("/home")} style={styles.backBtn}>← Voltar</button>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button onClick={() => navigate(`/checklist?consulta_id=${consulta_id}`)} style={styles.backBtn}>
-            Refazer Checklist
-          </button>
-          <button onClick={() => window.print()} style={styles.printBtn}>🖨️ Imprimir / PDF</button>
+    <div>
+      <div className="page-header" style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ flex: 1 }}>
+          <h2>Laudo de Triagem</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 2 }}>Consulta #{consultaId}</p>
         </div>
+        <button className="btn-secondary" onClick={() => navigate('/dashboard')}>← Dashboard</button>
+        <button className="btn-primary" onClick={handlePrint}>🖨 Imprimir</button>
       </div>
 
-      {/* Laudo */}
-      <div style={styles.laudoWrap}>
-        {/* Cabeçalho */}
-        <div style={styles.laudoHeader}>
+      <div className="card" ref={printRef}>
+        {/* Cabeçalho do laudo */}
+        <div className="laudo-header">
           <div>
-            <h1 style={styles.laudoTitulo}>Laudo Clínico</h1>
-            <p style={styles.laudoSub}>Síndrome X Frágil — Checklist de Triagem · Consulta #{consulta_id}</p>
+            <div className="laudo-logo">Instituto X Frágil</div>
+            <div className="laudo-sub">Síndrome do X Frágil — Triagem Clínica</div>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.65)" }}>
-              {new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}
-            </div>
+          <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Data de emissão</div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>{new Date().toLocaleDateString('pt-BR')}</div>
           </div>
         </div>
 
-        {/* Paciente */}
-        <section style={styles.section}>
-          <h2 style={styles.sectionTitle}>Dados do Paciente</h2>
-          <div style={styles.grid3}>
-            {[
-              ["Nome",              paciente.nome],
-              ["CPF",               paciente.cpf],
-              ["Data de Nasc.",     paciente.data_nascimento ? new Date(paciente.data_nascimento).toLocaleDateString("pt-BR") : "—"],
-              ["Responsável",       paciente.nome_responsavel],
-              ["Tel. Responsável",  paciente.telefone_responsavel],
-              ["Data da Consulta",  dataConsulta],
-            ].map(([l, v]) => (
-              <div key={l}>
-                <div style={styles.dataLabel}>{l}</div>
-                <div style={styles.dataValue}>{v || "—"}</div>
-              </div>
-            ))}
+        {/* Dados da consulta */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div className="laudo-field">
+            <div className="laudo-field-label">Paciente</div>
+            <div className="laudo-field-value">{dados.paciente_nome || `ID ${dados.paciente_id || '—'}`}</div>
           </div>
-        </section>
-
-        {/* Médico */}
-        <section style={styles.section}>
-          <h2 style={styles.sectionTitle}>Responsável pelo Atendimento</h2>
-          <div style={styles.grid3}>
-            {[
-              ["Médico",       laudo?.medico?.nome || medico.nome],
-              ["CRM",          laudo?.medico?.crm  || medico.crm],
-              ["Especialidade",laudo?.medico?.especialidade || medico.especialidade],
-            ].map(([l, v]) => (
-              <div key={l}>
-                <div style={styles.dataLabel}>{l}</div>
-                <div style={styles.dataValue}>{v || "—"}</div>
-              </div>
-            ))}
+          <div className="laudo-field">
+            <div className="laudo-field-label">Médico responsável</div>
+            <div className="laudo-field-value">{dados.medico_nome || '—'}</div>
           </div>
-        </section>
+          <div className="laudo-field">
+            <div className="laudo-field-label">Data da consulta</div>
+            <div className="laudo-field-value">{dados.data_consulta ? new Date(dados.data_consulta).toLocaleDateString('pt-BR') : '—'}</div>
+          </div>
+          <div className="laudo-field">
+            <div className="laudo-field-label">Checklist preenchido por</div>
+            <div className="laudo-field-value" style={{ textTransform: 'capitalize' }}>{dados.preenchido_por || '—'}</div>
+          </div>
+          <div className="laudo-field">
+            <div className="laudo-field-label">Consulta nº</div>
+            <div className="laudo-field-value">#{consultaId}</div>
+          </div>
+        </div>
 
         {/* Score */}
-        <section style={styles.section}>
-          <h2 style={styles.sectionTitle}>Resultado do Checklist</h2>
-          <div style={{ display: "flex", alignItems: "center", gap: "24px", marginBottom: "16px" }}>
-            <div style={styles.scoreBig}>
-              <span style={styles.scoreNum}>{score}</span>
-              <span style={{ fontSize: "20px", color: "#94a3b8" }}>/12</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius)', padding: '1.5rem', textAlign: 'center', border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 48, fontWeight: 700, fontFamily: 'Lora, serif', color: getScoreColor(), lineHeight: 1 }}>{score}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>de 12 pontos</div>
+            <div style={{ marginTop: '0.75rem', fontSize: 13, fontWeight: 600, color: getScoreColor() }}>
+              {score <= 3 ? 'Baixa suspeita' : score <= 7 ? 'Suspeita moderada' : 'Alta suspeita'}
             </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: "14px", color: "#475569", lineHeight: 1.6, marginBottom: "10px" }}>
-                {score <= 3 ? "Score baixo — monitoramento clínico recomendado."
-                 : score <= 7 ? "Score moderado — encaminhamento para especialista indicado."
-                 : "Score alto — avaliação para tratamento e investigação genética urgente."}
-              </p>
-              <div style={{ height: "8px", background: "#e2e8f0", borderRadius: "4px", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${(score/12)*100}%`, background: "linear-gradient(90deg, #1448a8, #0f3494)", borderRadius: "4px" }}/>
+          </div>
+          <div style={{ background: score >= 8 ? '#fce8e8' : score >= 4 ? 'var(--warn-bg)' : 'var(--teal-light)', borderRadius: 'var(--radius)', padding: '1.5rem', border: `1px solid ${score >= 8 ? '#f5a5a5' : score >= 4 ? 'var(--warn-border)' : '#9fe1cb'}` }}>
+            <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 6 }}>Encaminhamento</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: getScoreColor(), marginBottom: 8 }}>{encaminhamento}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              {score <= 3 && 'Score baixo. Não foram identificados sinais expressivos. Recomenda-se acompanhamento clínico regular e retorno em caso de novos sintomas.'}
+              {score > 3 && score <= 7 && 'Score moderado. Há sinais que justificam avaliação por especialista. Considerar encaminhamento para neuropediatria ou genética médica.'}
+              {score > 7 && 'Score alto. Perfil sintomático consistente com Síndrome do X Frágil. Encaminhamento urgente para genética médica recomendado para confirmação diagnóstica por exame molecular (PCR).'}
+            </div>
+          </div>
+        </div>
+
+        {/* Sintomas */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <div className="section-title">Sintomas identificados ({sintomasPresentes.length}/12)</div>
+          {sintomasPresentes.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Nenhum sintoma marcado.</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {sintomasPresentes.map(([k, label]) => (
+                <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--blue-light)', borderRadius: 6, fontSize: 14 }}>
+                  <span style={{ color: 'var(--blue)', fontWeight: 600 }}>✓</span> {label}
+                </div>
+              ))}
+            </div>
+          )}
+          {Object.entries(SINTOMA_LABELS).filter(([k]) => !dados[k]).length > 0 && (
+            <div style={{ marginTop: '1rem' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Não observados</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                {Object.entries(SINTOMA_LABELS).filter(([k]) => !dados[k]).map(([k, label]) => (
+                  <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 6, fontSize: 13, color: 'var(--text-muted)' }}>
+                    <span>—</span> {label}
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-        </section>
+          )}
+        </div>
 
-        {/* Encaminhamento */}
-        <section style={styles.section}>
-          <h2 style={styles.sectionTitle}>Encaminhamento</h2>
-          <div style={{ ...styles.encBox, background: encCfg.bg }}>
-            <div style={{ ...styles.encTipo, color: encCfg.cor }}>{encCfg.label}</div>
-            <div style={{ fontSize: "13px", color: encCfg.cor === "#ffffff" ? "rgba(255,255,255,0.85)" : "#475569", lineHeight: 1.6 }}>
-              {enc === "observacao"     && "Manter acompanhamento clínico regular. Reavaliação em 3 a 6 meses."}
-              {enc === "auxilio_clinico"&& "Encaminhar para avaliação multidisciplinar: fonoaudiologia, terapia ocupacional e psicologia."}
-              {enc === "medicacao"      && "Solicitar teste de DNA (PCR + Southern Blot) e encaminhar para geneticista. Considerar suporte farmacológico para comorbidades."}
+        {/* Comentário */}
+        {dados.comentario && (
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div className="section-title">Observações clínicas</div>
+            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '1rem', fontSize: 14, lineHeight: 1.6, color: 'var(--text)' }}>
+              {dados.comentario}
             </div>
           </div>
-        </section>
+        )}
 
-        <div style={styles.laudoFooter}>
-          <p>Documento gerado pela plataforma X Frágil Gestão Clínica. Não substitui avaliação clínica presencial.</p>
+        {/* Rodapé */}
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)' }}>
+          <span>Instituto X Frágil — contato@institutoxfragil.org.br — (41) 3156-0509</span>
+          <span>Documento gerado em {new Date().toLocaleString('pt-BR')}</span>
         </div>
       </div>
 
-      <style>{`@media print { .no-print { display: none !important; } }`}</style>
+      <style>{`@media print { .page-header button, .sidebar { display: none !important; } .main-content { padding: 0 !important; } }`}</style>
     </div>
   );
 }
-
-const styles = {
-  page:        { display: "flex", flexDirection: "column", gap: "20px" },
-  center:      { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px", textAlign: "center" },
-  toolbar:     { display: "flex", justifyContent: "space-between", alignItems: "center" },
-  backBtn:     { padding: "9px 16px", background: "white", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "13px", color: "#475569", fontWeight: 500, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
-  printBtn:    { padding: "9px 18px", background: "linear-gradient(135deg, #1448a8, #1e6fd9)", border: "none", borderRadius: "8px", fontSize: "13px", color: "white", fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
-  laudoWrap:   { background: "white", borderRadius: "16px", border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "0 2px 12px rgba(20,72,168,0.06)" },
-  laudoHeader: { background: "linear-gradient(135deg, #061a4a, #1448a8)", padding: "32px 36px", display: "flex", justifyContent: "space-between", alignItems: "center" },
-  laudoTitulo: { fontFamily: "'Playfair Display', serif", fontSize: "26px", fontWeight: 700, color: "white", margin: "0 0 4px 0" },
-  laudoSub:    { fontSize: "13px", color: "rgba(255,255,255,0.65)", margin: 0 },
-  section:     { padding: "24px 36px", borderBottom: "1px solid #f1f5f9" },
-  sectionTitle:{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "16px" },
-  grid3:       { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px" },
-  dataLabel:   { fontSize: "11px", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "3px" },
-  dataValue:   { fontSize: "14px", color: "#1a1a2e", fontWeight: 500 },
-  scoreBig:    { background: "#f0f6ff", borderRadius: "14px", padding: "16px 24px", textAlign: "center", flexShrink: 0, border: "1px solid #dbeafe" },
-  scoreNum:    { fontFamily: "'Playfair Display', serif", fontSize: "44px", fontWeight: 900, color: "#1448a8" },
-  encBox:      { borderRadius: "12px", padding: "20px 24px", border: "1px solid #dbeafe" },
-  encTipo:     { fontSize: "16px", fontWeight: 700, marginBottom: "8px" },
-  laudoFooter: { padding: "16px 36px", background: "#f8faff", fontSize: "11px", color: "#94a3b8", lineHeight: 1.8 },
-};

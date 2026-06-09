@@ -76,4 +76,24 @@ const listarPacientes = async (req, res) => {
     }
 };
 
+const buscarPorCpf = async (req, res) => {
+    const { cpf } = req.params; //vai pegar o cpf direto da url, o cpf vai vir pelo req params e nao pelo body pq é uma busca e ano um envio de dados
+
+    try {
+        const [paciente] = await pool.query(
+            'SELECT id, nome, cpf, email, telefone, data_nascimento, cidade, estado FROM pacientes WHERE cpf = ?',// vai buscar o paciente pelo cpf
+            [cpf]
+        );
+
+        if (paciente.length === 0) {
+            return res.status(404).json({ mensagem: 'Paciente não encontrado.' });
+        }
+
+        return res.status(200).json(paciente[0]);
+
+    } catch (erro) {
+        console.error('Erro ao buscar paciente:', erro);
+        return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
+    }
+};
 module.exports = { cadastrarPaciente, listarPacientes };

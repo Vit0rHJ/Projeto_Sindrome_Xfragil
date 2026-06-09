@@ -45,6 +45,9 @@ Controller e rota de checklist
 Controller e rota de laudos — gerar o PDF do laudo.
 
 BANCO DE DADOS:
+USAR ISSO PARA RODAR O MARIA DB: & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root
+
+
 por enquanto estamos utilizando o MysqlServer, ele fica rodando em segundo plano na maquina na porta 3306, e existe independente de qualquer ferramente,OBS: estamos utilizando o proprio mysqlserver para fazer os testes, o mysql2 é a biblioteca do node que estamos usando para falar com o mysqlservrer diretamente sem ter que abrir o workbench diretamente.
 depois de alguns novos requesitos terem sido feitos o banco teve que ser alterado, atulamente estao com a modelagem completa(usuarios, pacientes, consultas, checklist, laudos).
 as viws para consultas simplificadas (vw_consulta_completa, vw_checklist_resumo).

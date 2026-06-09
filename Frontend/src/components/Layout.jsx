@@ -1,16 +1,12 @@
-import { Sidebar } from "./Sidebar";
-import { Outlet } from "react-router-dom";
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import Sidebar from './Sidebar';
 
-export function Layout() {
+export default function Layout() {
   return (
-    <div style={{ display: "flex", height: "100vh", fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="layout">
       <Sidebar />
-      <main style={{
-        flex: 1,
-        padding: "40px",
-        backgroundColor: "#f0f6ff",
-        overflowY: "auto",
-      }}>
+      <main className="main-content">
         <Outlet />
       </main>
     </div>

@@ -1,5 +1,6 @@
 const pool = require("../config/db");
-
+const fs = require('fs');
+const path = require('path');
 const cadastrarPaciente = async (req, res) => {
     const { 
         nome, cpf, data_nascimento, sexo, nome_mae, nome_pai,
@@ -25,7 +26,7 @@ const cadastrarPaciente = async (req, res) => {
         }
 
       const [resultado] = await pool.query(
-    `INSERT INTO pacientes (...) VALUES (...)',
+            `INSERT INTO pacientes (
                 nome, cpf, data_nascimento, sexo, nome_mae, nome_pai,
                 email, telefone, whatsapp, telefone2, cidade, estado, pais,
                 nome_responsavel, cpf_responsavel, telefone_responsavel, grau_parentesco,
@@ -96,4 +97,43 @@ const buscarPorCpf = async (req, res) => {
         return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
     }
 };
-module.exports = { cadastrarPaciente, listarPacientes, buscarPorCpf, };
+const atualizarFotoPaciente = async (req, res) => {
+    const { id } = req.params;
+
+    if (!req.file) {
+        return res.status(400).json({ mensagem: 'Nenhuma foto enviada.' });
+    }
+
+    try {
+        const [paciente] = await pool.query(
+            'SELECT foto FROM pacientes WHERE id = ?',
+            [id]
+        );
+
+        if (paciente.length === 0) {
+            return res.status(404).json({ mensagem: 'Paciente não encontrado.' });
+        }
+
+        if (paciente[0].foto) {
+            const caminhoAntigo = path.join(__dirname, '..', 'uploads', paciente[0].foto);
+            if (fs.existsSync(caminhoAntigo)) {
+                fs.unlinkSync(caminhoAntigo);
+            }
+        }
+
+        await pool.query(
+            'UPDATE pacientes SET foto = ? WHERE id = ?',
+            [req.file.filename, id]
+        );
+
+        return res.status(200).json({
+            mensagem: 'Foto atualizada com sucesso.',
+            foto: req.file.filename
+        });
+
+    } catch (erro) {
+        console.error('Erro ao atualizar foto do paciente:', erro);
+        return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
+    }
+};
+module.exports = { cadastrarPaciente, listarPacientes, buscarPorCpf,atualizarFotoPaciente };

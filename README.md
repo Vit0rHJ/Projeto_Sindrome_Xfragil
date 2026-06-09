@@ -1,4 +1,5 @@
 BACKEND:
+
  SOBRE O LAUDO: vamos usar a biblioteca pdfkit que vai permitir agente criar pedf direto pelo node.js, No nosso projeto ele vai gerar o laudo da consulta com os dados do paciente, os sintomas marcados no checklist, o score e o encaminhamento tudo num PDF que o médico pode baixar e enviar para outros médicos.
 OBS: secretaria, recebe checklist do responsavel, e tem acesso a dados gerais
 OBS IMPORTANTES PARA O PROJETO:
@@ -39,6 +40,8 @@ eu adicionei as rotas de autenticaco.
 o sisitema de rotas protegidas por perfil ta no (routes/auth.js)
 
 PARA REALIZAR TESTES DO BACK: estamos utilizando o Postman
+
+BIBLIOTECA MULTER: eu adicionei a nova biblioteca multer, para upload de fotos , éla serve para gerenciar o recebimento de arquivos no node, op front vai enviar a foto, o multer intercepta , salvo o arquivo na pasta uploads, coloca o caminho do arquivo  no req.file, o controller vai pegar o req.file.filename e vai salvar no banco, o banco nao vai salvar imagens ele vai salvar o caminho do arquvo 
 
 A FAZER BACKEND:
 Controller e rota de checklist

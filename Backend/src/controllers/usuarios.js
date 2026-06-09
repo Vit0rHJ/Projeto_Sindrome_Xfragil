@@ -1,5 +1,8 @@
 const bcrypt = require("bcryptjs");
 const pool = require("../config/db");
+const upload = require('../utils/upload');
+const fs = require('fs');
+const path = require('path');
 
 const cadastrarMedico = async (req, res) => {
   const { nome, email, senha, crm, especialidade } = req.body; // aqui vai peegar os dados que vieram da requisicao, a formatacao ta asssim pq tamo usando um negocio chamado desconstrucao que pega varias propriedades de um objeto de uma vez
@@ -63,34 +66,101 @@ const editarMedico = async (req, res) => {
   }
 };
 //para desativar medicos, eu decidi que seria melhor apenas deixar medicos como inativos em vez de apagalos completamente do sistema para preservar o historico
+//tambem estou implementado a reatribuicao dos pacinetes dos medicos, antes da desativacao deles 
 const desativarMedico = async (req, res) => {
   const { id } = req.params; // vai pegar o id do medico que vem da url
+const { novo_medico_id } = req.body;
 
-  try {
-    const [medico] = await pool.query(
-      'SELECT id FROM usuarios WHERE id = ? AND perfil = "medico"',
-      [id],
-    );
-
-    if (medico.length === 0) {
-      return res.status(404).json({ mensagem: "Médico não encontrado." });
+    if (!novo_medico_id) {
+        return res.status(400).json({ mensagem: 'Informe o médico que vai assumir os pacientes.' });
     }
 
-    await pool.query(
-      'UPDATE usuarios SET ativo = 0 WHERE id = ?',
-      [id],
-    );
+    try {
+        const [medico] = await pool.query(
+            'SELECT id FROM usuarios WHERE id = ? AND perfil = "medico"',
+            [id]
+        );
 
-    return res.status(200).json({ mensagem: "Médico desativado com sucesso." });
-  } catch (erro) {
-    console.error("Erro ao desativar médico:", erro);
-    return res.status(500).json({ mensagem: "Erro interno do servidor." });
-  }
+        if (medico.length === 0) {
+            return res.status(404).json({ mensagem: 'Médico não encontrado.' });
+        }
+
+        const [novoMedico] = await pool.query(
+            'SELECT id FROM usuarios WHERE id = ? AND perfil = "medico" AND ativo = 1',
+            [novo_medico_id] // o admin precisa informar no body qual medico vai assumir os pacientes
+        );
+
+        if (novoMedico.length === 0) {
+            return res.status(404).json({ mensagem: 'Novo médico não encontrado ou inativo.' });
+        }
+// o UPDATE pacientes transfere os pacinetes para o novo medico
+        await pool.query(
+            'UPDATE pacientes SET medico_id = ? WHERE medico_id = ?',//
+            [novo_medico_id, id]
+        );
+//O UPDATE consultasvai transferir tambem todas as consultas pendentes
+        await pool.query(
+            'UPDATE consultas SET medico_id = ? WHERE medico_id = ?',
+            [novo_medico_id, id]
+        );
+// o UPDATE usuarios SET ativo = 0, so vai desativar depois de transfirir tudo
+        await pool.query(
+            'UPDATE usuarios SET ativo = 0 WHERE id = ?',
+            [id]
+        );
+
+        return res.status(200).json({ mensagem: 'Médico desativado e pacientes transferidos com sucesso.' });
+
+    } catch (erro) {
+        console.error('Erro ao desativar médico:', erro);
+        return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
+    }
 };
 
+
+const atualizarFotoMedico = async (req, res) => {
+    const { id } = req.params;
+
+    if (!req.file) { // o req.file é onde o multer vai colocar os arquivos apos ele processar eles, se estiver vazio é pq  nenhum arquivo foi enviado
+        return res.status(400).json({ mensagem: 'Nenhuma foto enviada.' });
+    }
+
+    try {
+        const [medico] = await pool.query(
+            'SELECT foto FROM usuarios WHERE id = ? AND perfil = "medico"',
+            [id]
+        );
+
+        if (medico.length === 0) {
+            return res.status(404).json({ mensagem: 'Médico não encontrado.' });
+        }
+
+        if (medico[0].foto) {
+            const caminhoAntigo = path.join(__dirname, '..', 'uploads', medico[0].foto);
+            if (fs.existsSync(caminhoAntigo)) {
+                fs.unlinkSync(caminhoAntigo);// o unlyncsync serve parea deletar o arquivo do disco
+            }
+        }
+
+        await pool.query(
+            'UPDATE usuarios SET foto = ? WHERE id = ?',
+            [req.file.filename, id] // é o nome gerado pelo multer que salvamos no banco
+        );
+
+        return res.status(200).json({
+            mensagem: 'Foto atualizada com sucesso.',
+            foto: req.file.filename
+        });
+
+    } catch (erro) {
+        console.error('Erro ao atualizar foto:', erro);
+        return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
+    }
+};
 module.exports = {
   cadastrarMedico,
   listarMedicos,
   editarMedico,
   desativarMedico,
+  atualizarFotoMedico,
 };

@@ -1,4 +1,4 @@
-//size — tamanho da borboleta em pixels. O padrão é 44px mas você pode passar qualquer valor, por exemplo <ButterflyIcon size={120} /> para a tela de login ou <ButterflyIcon size={40} /> para a topbar.
+//size — tamanho da borboleta em pixels. O padrão é 44px mas você pode passar qualquer valor, por exemplo <Borboleta size={120} /> para a tela de login ou <Borboleta size={40} /> para a topbar.
 //opacity — transparência. Usamos opacity={0.04} quando ela aparece como marca d'água no fundo das telas.
 export function Borboleta({ size = 44, opacity = 1 }) {
   return (

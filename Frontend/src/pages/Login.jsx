@@ -1,58 +1,230 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useState } from "react"; // controla os valores dos campos e estado de erro e login
+import { useNavigate, Link } from "react-router-dom";
+import api from "../services/api";
+import { Borboleta } from "../components/simbuloBorboleta";
+
+const s = {
+  wrap: { display: "flex", height: "100vh" },
+  left: {
+    width: "44%",
+    background: "#0a0a0a",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  right: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    padding: "40px 48px",
+    position: "relative",
+  },
+  corner: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 0,
+    height: 0,
+    borderStyle: "solid",
+    borderWidth: "0 28px 28px 0",
+    borderColor: "transparent #1a6fff transparent transparent",
+  },
+  brand: { textAlign: "center", marginBottom: 12 },
+  brandTitle: {
+    fontFamily: "'Bebas Neue', sans-serif",
+    fontSize: 36,
+    letterSpacing: 6,
+    color: "#fff",
+    lineHeight: 1,
+  },
+  brandSub: {
+    fontSize: 9,
+    letterSpacing: 5,
+    color: "#334",
+    textTransform: "uppercase",
+    marginTop: 4,
+  },
+  tags: { display: "flex", flexDirection: "column", gap: 10, marginTop: 24 },
+  tag: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    fontSize: 11,
+    color: "#446",
+  },
+  tagDot: {
+    width: 4,
+    height: 4,
+    borderRadius: "50%",
+    background: "#1a6fff",
+    flexShrink: 0,
+  },
+  eye: {
+    fontSize: 8,
+    letterSpacing: 4,
+    textTransform: "uppercase",
+    color: "#1a6fff",
+    marginBottom: 8,
+  },
+  title: {
+    fontFamily: "'Bebas Neue', sans-serif",
+    fontSize: 40,
+    letterSpacing: 2,
+    color: "#0a0a0a",
+    lineHeight: 1,
+    marginBottom: 6,
+  },
+  sub: { fontSize: 12, color: "#aaa", marginBottom: 32 },
+  label: {
+    display: "block",
+    fontSize: 10,
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    color: "#888",
+    marginBottom: 6,
+  },
+  input: {
+    width: "100%",
+    padding: "11px 14px",
+    border: "1px solid #e0e0e0",
+    fontSize: 13,
+    color: "#0a0a0a",
+    background: "#fafafa",
+    outline: "none",
+    marginBottom: 16,
+  },
+  btn: {
+    width: "100%",
+    padding: 13,
+    background: "#0a0a0a",
+    color: "#fff",
+    border: "none",
+    fontSize: 11,
+    letterSpacing: 3,
+    textTransform: "uppercase",
+    cursor: "pointer",
+    fontFamily: "'Space Grotesk', sans-serif",
+    position: "relative",
+    marginTop: 8,
+  },
+  btnBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    background: "#1a6fff",
+  },
+  divider: { display: "flex", alignItems: "center", gap: 12, margin: "20px 0" },
+  divLine: { flex: 1, height: 1, background: "#e0e0e0" },
+  divTxt: { fontSize: 10, color: "#ccc", letterSpacing: 1 },
+  linkWrap: { textAlign: "center", fontSize: 12, color: "#888" },
+  link: { color: "#1a6fff", fontWeight: 500, textDecoration: "none" },
+  error: {
+    background: "#fff0f0",
+    border: "1px solid #ffcccc",
+    color: "#cc0000",
+    fontSize: 11,
+    padding: "8px 12px",
+    marginBottom: 12,
+  },
+};
 
 export default function Login() {
-  const { signIn } = useAuth();
-  const navigate   = useNavigate();
-  const [email, setEmail]   = useState('');
-  const [senha, setSenha]   = useState('');
-  const [erro, setErro]     = useState('');
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState("");
+  // o loading deabilita o botao enquanto aguarda a resposta do backend para evitar clipes duplos
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErro('');
+  async function handleSubmit(e) {
+    // faz POST/auth/login com email e senha. se der certo salva o token no LocalStorage e redireciona para /home, se derv erro vai mostar a mensagem retornada pelo backend
+    e.preventDefault(); // o comportamento padara0 da formulario é ficar recarregando a pagina, essa sessao impede que isso aconteça
+    setErro("");
     setLoading(true);
     try {
-      await signIn(email, senha);
-      navigate('/dashboard');
+      const { data } = await api.post("/auth/login", { email, senha });
+      localStorage.setItem("token", data.token);
+      navigate("/home");
     } catch (err) {
-      setErro(err.message || 'Email ou senha incorretos.');
+      setErro(err.response?.data?.mensagem || "Erro ao fazer login.");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #e8f1fb 0%, #f5f7fa 100%)', padding: '1rem' }}>
-      <div style={{ width: '100%', maxWidth: 420 }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontFamily: 'Lora, serif', fontSize: '1.8rem', color: 'var(--blue)', marginBottom: 4 }}>X Frágil</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Sistema de Triagem — Acesso Profissional</p>
+    <div style={s.wrap}>
+      <div style={s.left}>
+        <Borboleta size={120} />
+        <div style={s.brand}>
+          <div style={s.brandTitle}>EU DIGO X</div>
+          <div style={s.brandSub}>Síndrome X Frágil</div>
         </div>
-
-        <div className="card">
-          {erro && <div className="alert alert-error">{erro}</div>}
-
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>E-mail</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com.br" required autoFocus />
-            </div>
-            <div className="form-group">
-              <label>Senha</label>
-              <input type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="••••••••" required />
-            </div>
-            <button type="submit" className="btn-primary" disabled={loading} style={{ width: '100%', marginTop: '0.5rem', padding: '12px' }}>
-              {loading ? 'Entrando...' : 'Entrar'}
-            </button>
-          </form>
+        <div style={s.tags}>
+          <div style={s.tag}>
+            <div style={s.tagDot}></div>Checklist de triagem inteligente
+          </div>
+          <div style={s.tag}>
+            <div style={s.tagDot}></div>Laudos clínicos automatizados
+          </div>
+          <div style={s.tag}>
+            <div style={s.tagDot}></div>Gestão de pacientes centralizada
+          </div>
         </div>
+      </div>
 
-        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: 13, color: 'var(--text-muted)' }}>
-          <Link to="/">← Voltar ao site público</Link>
-        </p>
+      <div style={s.right}>
+        <div style={s.corner}></div>
+        <div style={s.eye}>acesso ao sistema</div>
+        <div style={s.title}>
+          Bem-vindo
+          <br />
+          de volta
+        </div>
+        <div style={s.sub}>Acesse sua conta para continuar</div>
+
+        <form onSubmit={handleSubmit}>
+          {erro && <div style={s.error}>{erro}</div>}
+          <label style={s.label}>E-mail</label>
+          <input
+            style={s.input}
+            type="email"
+            placeholder="seu@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <label style={s.label}>Senha</label>
+          <input
+            style={s.input}
+            type="password"
+            placeholder="••••••••"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            required
+          />
+          <button style={s.btn} type="submit" disabled={loading}>
+            {loading ? "Entrando..." : "Entrar"}
+            <div style={s.btnBar}></div>
+          </button>
+        </form>
+
+        <div style={s.divider}>
+          <div style={s.divLine}></div>
+          <div style={s.divTxt}>ou</div>
+          <div style={s.divLine}></div>
+        </div>
+        <div style={s.linkWrap}>
+          Responsável?{" "}
+          <Link to="/cadastro-responsavel" style={s.link}>
+            Criar conta
+          </Link>
+        </div>
       </div>
     </div>
   );

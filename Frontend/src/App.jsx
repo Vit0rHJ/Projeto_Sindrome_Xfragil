@@ -1,55 +1,38 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-import Home             from './pages/Home';
-import FormularioPacientePublico from './pages/FormularioPacientePublico';
-import Login           from './pages/Login';
-import Layout          from './components/Layout';
-import Dashboard       from './pages/Dashboard';
-import Pacientes       from './pages/Pacientes';
-import CadastroPaciente from './pages/CadastroPaciente';
-import NovaConsulta    from './pages/NovaConsulta';
-import Checklist       from './pages/Checklist';
-import Laudo           from './pages/Laudo';
-import Medicos         from './pages/Medicos';
-import Admin           from './pages/Admin';
-
-function PrivateRoute({ children }) {
-  const { token } = useAuth();
-  return token ? children : <Navigate to="/login" replace />;
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { getUser } from './services/api'
+import Layout from './components/Layout'
+import Login from './pages/Login'
+import CadastroResponsavel from './pages/CadastroResponsavel'
+import Home from './pages/Home'
+import Cadastro from './pages/Cadastro'
+import Checklist from './pages/Checklist'
+import Laudo from './pages/Laudo'
+import AdminMedicos from './pages/AdminMedicos'
+// o Privateroute, serve como componente de protecao , antes de renderizar qualquer pagina protegida, ele vai verificar se existe um token valido no localstorage, se nao tiver manda devolta para o login, se apenasAdmin for true, verifica tambem  se o perfil é admin
+function PrivateRoute({ children, apenasAdmin = false }) {
+  const user = getUser()
+  if (!user) return <Navigate to="/" replace />
+  if (apenasAdmin && user.perfil !== 'admin') return <Navigate to="/home" replace />
+  return children
 }
-
-function AdminRoute({ children }) {
-  const { isAdmin } = useAuth();
-  return isAdmin ? children : <Navigate to="/dashboard" replace />;
-}
-
+// as rotas dentro do <Route element={<PrivateRoute><Layout /></PrivateRoute>}>, herdam automaticamente a topbar e sidebar do layout
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Páginas públicas */}
-          <Route path="/"                    element={<Home />} />
-          <Route path="/cadastro-paciente-publico" element={<FormularioPacientePublico />} />
-          <Route path="/login"               element={<Login />} />
-
-          {/* Área protegida */}
-          <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
-            <Route path="dashboard"          element={<Dashboard />} />
-            <Route path="pacientes"          element={<Pacientes />} />
-            <Route path="pacientes/novo"     element={<CadastroPaciente />} />
-            <Route path="consultas/nova"     element={<NovaConsulta />} />
-            <Route path="checklist/:consultaId" element={<Checklist />} />
-            <Route path="laudo/:consultaId"  element={<Laudo />} />
-            <Route path="medicos"            element={<AdminRoute><Medicos /></AdminRoute>} />
-            <Route path="admin"              element={<AdminRoute><Admin /></AdminRoute>} />
-          </Route>
-
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
-  );
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/cadastro-responsavel" element={<CadastroResponsavel />} />
+        <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
+          <Route path="/home" element={<Home />} />
+          <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/checklist" element={<Checklist />} />
+          <Route path="/laudo/:consulta_id" element={<Laudo />} />
+          <Route path="/admin/medicos" element={<PrivateRoute apenasAdmin><AdminMedicos /></PrivateRoute>} />
+        </Route>
+        // o path="*"  captura qualquer rota  desconhecida e redireciona para o login
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  )
 }

@@ -1,0 +1,4 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Space Grotesk', sans-serif; background: #fff; color: #0a0a0a; }
+button { cursor: pointer; font-family: 'Space Grotesk', sans-serif; }
+input, textarea, select { font-family: 'Space Grotesk', sans-serif; }

@@ -133,6 +133,11 @@ export default function Layout() {
       path: "/checklist",
       perfis: ["admin", "medico", "responsavel"],
     },
+    {
+      label: "Laudos",
+      path: "/laudos",
+      perfis: ["admin", "medico"],
+    },
   ];
 
   const adminItems = [

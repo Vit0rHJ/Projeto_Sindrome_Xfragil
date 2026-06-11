@@ -103,44 +103,43 @@ const gerarLaudo = async (req, res) => {
 };
 //adicionei uma nova funcao, éla vai  resolver de nao mostar os dados na tela antes de imprimir so gerrar o pdf nao servia pra isso, ent agr o front vai receber os dados do JSON que ele precisa para mostrar visualmenete
 const buscarDadosLaudo = async (req, res) => {
-    const { consulta_id } = req.params;
+  const { consulta_id } = req.params;
 
-    try {
-        const [consulta] = await pool.query(
-            'SELECT * FROM vw_consulta_completa WHERE id = ?',
-            [consulta_id]
-        );
+  try {
+    const [consulta] = await pool.query(
+      "SELECT * FROM vw_consulta_completa WHERE id = ?",
+      [consulta_id],
+    );
 
-        if (consulta.length === 0) {
-            return res.status(404).json({ mensagem: 'Consulta não encontrada.' });
-        }
-
-        const [checklist] = await pool.query(
-            'SELECT * FROM vw_checklist_resumo WHERE consulta_id = ?',
-            [consulta_id]
-        );
-
-        const [paciente] = await pool.query(
-            'SELECT * FROM pacientes WHERE id = ?',
-            [consulta[0].paciente_id]
-        );
-
-        const [medico] = await pool.query(
-            'SELECT id, nome, crm, especialidade FROM usuarios WHERE id = ?',
-            [consulta[0].medico_id]
-        );
-
-        return res.status(200).json({
-            consulta: consulta[0],
-            checklist: checklist[0] || null,
-            paciente: paciente[0] || null,
-            medico: medico[0] || null
-        });
-
-    } catch (erro) {
-        console.error('Erro ao buscar dados do laudo:', erro);
-        return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
+    if (consulta.length === 0) {
+      return res.status(404).json({ mensagem: "Consulta não encontrada." });
     }
+
+    const [checklist] = await pool.query(
+      "SELECT * FROM checklist WHERE consulta_id = ?",
+      [consulta_id],
+    );
+
+    const [paciente] = await pool.query(
+      "SELECT * FROM pacientes WHERE id = ?",
+      [consulta[0].paciente_id],
+    );
+
+    const [medico] = await pool.query(
+      "SELECT id, nome, crm, especialidade FROM usuarios WHERE id = ?",
+      [consulta[0].medico_id],
+    );
+
+    return res.status(200).json({
+      consulta: consulta[0],
+      checklist: checklist[0] || null,
+      paciente: paciente[0] || null,
+      medico: medico[0] || null,
+    });
+  } catch (erro) {
+    console.error("Erro ao buscar dados do laudo:", erro);
+    return res.status(500).json({ mensagem: "Erro interno do servidor." });
+  }
 };
 
 module.exports = { gerarLaudo, buscarDadosLaudo };

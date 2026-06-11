@@ -147,6 +147,11 @@ export default function Layout() {
       path: "/secretaria",
       perfis: ["admin", "secretaria"],
     },
+    {
+      label: "Relatórios",
+      path: "/relatorios",
+      perfis: ["admin", "secretaria"],
+    },
   ];
 
   const visibleMenu = menuItems.filter((i) => i.perfis.includes(user?.perfil));

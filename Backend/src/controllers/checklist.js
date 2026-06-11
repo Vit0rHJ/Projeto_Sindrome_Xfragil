@@ -1,4 +1,51 @@
 const pool = require("../config/db");
+const { registrarLog } = require("../utils/auditoria");
+
+// Limiares clínicos do score ponderado, conforme Requisitos_Sistema.pdf (RF11/RF12/RNF16)
+const LIMIAR_MASCULINO = 0.56;
+const LIMIAR_FEMININO = 0.55;
+
+const SINTOMAS_CODIGOS = [
+  "sin_atraso_fala",
+  "sin_dif_aprendizado",
+  "sin_deficit_atencao",
+  "sin_def_intelectual",
+  "sin_hiperatividade",
+  "sin_agressividade",
+  "sin_evita_contato_visual",
+  "sin_evita_contato_fisico",
+  "sin_movimentos_repetitivos",
+  "sin_frouxidao",
+  "sin_macroquidia",
+  "sin_face_alongada",
+];
+
+// calcula o score ponderado (0-1) a partir das respostas do checklist e dos
+// pesos cadastrados em sintomas_pesos, usando o peso de acordo com o sexo
+// do paciente. Também devolve o limiar clínico (RNF16) e o encaminhamento
+// sugerido com base na comparação entre o score e o limiar.
+function calcularScorePonderado(respostas, pesos, sexo) {
+  const colunaPeso = sexo === "F" ? "peso_feminino" : "peso_masculino";
+  const limiar = sexo === "F" ? LIMIAR_FEMININO : LIMIAR_MASCULINO;
+
+  let score = 0;
+  for (const peso of pesos) {
+    const valor = Number(respostas[peso.codigo]) || 0;
+    score += valor * Number(peso[colunaPeso]);
+  }
+  score = Math.round(score * 10000) / 10000;
+
+  let encaminhamento;
+  if (score >= limiar) {
+    encaminhamento = "medicacao";
+  } else if (score >= limiar * 0.7) {
+    encaminhamento = "auxilio_clinico";
+  } else {
+    encaminhamento = "observacao";
+  }
+
+  return { score_ponderado: score, limiar_usado: limiar, encaminhamento };
+}
 
 const salvarChecklist = async (req, res) => {
   const {
@@ -57,6 +104,41 @@ const salvarChecklist = async (req, res) => {
         .json({ mensagem: "Checklist já cadastrado para essa consulta." });
     }
 
+    // busca o sexo do paciente (define qual coluna de pesos e qual limiar usar - RF11/RF12/RNF16)
+    const [pacienteRows] = await pool.query(
+      `SELECT p.sexo FROM consultas c
+       JOIN pacientes p ON p.id = c.paciente_id
+       WHERE c.id = ?`,
+      [consulta_id],
+    );
+    const sexo = pacienteRows[0]?.sexo || null;
+
+    // busca os pesos configuráveis de cada sintoma (sem precisar mexer no código - RNF16)
+    const [pesos] = await pool.query(
+      "SELECT codigo, peso_masculino, peso_feminino FROM sintomas_pesos WHERE ativo = 1",
+    );
+
+    const respostas = {
+      sin_atraso_fala: sin_atraso_fala || 0,
+      sin_dif_aprendizado: sin_dif_aprendizado || 0,
+      sin_deficit_atencao: sin_deficit_atencao || 0,
+      sin_def_intelectual: sin_def_intelectual || 0,
+      sin_hiperatividade: sin_hiperatividade || 0,
+      sin_agressividade: sin_agressividade || 0,
+      sin_evita_contato_visual: sin_evita_contato_visual || 0,
+      sin_evita_contato_fisico: sin_evita_contato_fisico || 0,
+      sin_movimentos_repetitivos: sin_movimentos_repetitivos || 0,
+      sin_frouxidao: sin_frouxidao || 0,
+      sin_macroquidia: sin_macroquidia || 0,
+      sin_face_alongada: sin_face_alongada || 0,
+    };
+
+    const { score_ponderado, limiar_usado, encaminhamento } = calcularScorePonderado(
+      respostas,
+      pesos,
+      sexo,
+    );
+
     await pool.query(
       `INSERT INTO checklist (
                 consulta_id, preenchido_por, observacoes,
@@ -64,36 +146,44 @@ const salvarChecklist = async (req, res) => {
                 sin_def_intelectual, sin_hiperatividade, sin_agressividade,
                 sin_evita_contato_visual, sin_evita_contato_fisico,
                 sin_movimentos_repetitivos, sin_frouxidao,
-                sin_macroquidia, sin_face_alongada
-            ) VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                sin_macroquidia, sin_face_alongada,
+                score_ponderado, limiar_usado, encaminhamento
+            ) VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         consulta_id,
         preenchido_por || "medico",
         observacoes || null,
-        sin_atraso_fala || 0,
-        sin_dif_aprendizado || 0,
-        sin_deficit_atencao || 0,
-        sin_def_intelectual || 0,
-        sin_hiperatividade || 0,
-        sin_agressividade || 0,
-        sin_evita_contato_visual || 0,
-        sin_evita_contato_fisico || 0,
-        sin_movimentos_repetitivos || 0,
-        sin_frouxidao || 0,
-        sin_macroquidia || 0,
-        sin_face_alongada || 0,
+        respostas.sin_atraso_fala,
+        respostas.sin_dif_aprendizado,
+        respostas.sin_deficit_atencao,
+        respostas.sin_def_intelectual,
+        respostas.sin_hiperatividade,
+        respostas.sin_agressividade,
+        respostas.sin_evita_contato_visual,
+        respostas.sin_evita_contato_fisico,
+        respostas.sin_movimentos_repetitivos,
+        respostas.sin_frouxidao,
+        respostas.sin_macroquidia,
+        respostas.sin_face_alongada,
+        score_ponderado,
+        limiar_usado,
+        encaminhamento,
       ],
     );
-    // score e encaminhamento automatico
+    // score_total é calculado pela trigger do banco (soma simples 0-12)
     const [resultado] = await pool.query(
-      "SELECT score_total, encaminhamento FROM checklist WHERE consulta_id = ?",
+      "SELECT score_total, score_ponderado, limiar_usado, encaminhamento FROM checklist WHERE consulta_id = ?",
       [consulta_id],
     );
+
+    await registrarLog(req.usuario, "checklist_salvo", `consulta_id=${consulta_id}, score_ponderado=${score_ponderado}, encaminhamento=${encaminhamento}`);
 
     return res.status(201).json({
       mensagem: "Checklist salvo com sucesso.",
       consulta_id: Number(consulta_id),
       score_total: resultado[0].score_total,
+      score_ponderado: resultado[0].score_ponderado,
+      limiar_usado: resultado[0].limiar_usado,
       encaminhamento: resultado[0].encaminhamento,
     });
   } catch (erro) {

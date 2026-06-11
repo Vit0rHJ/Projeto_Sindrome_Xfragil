@@ -69,7 +69,7 @@ const SINTOMAS = [
 const encLabel = {
   observacao: "Observação",
   auxilio_clinico: "Auxílio Clínico",
-  medicacao: "Medicação",
+  medicacao: "Encaminhamento Prioritário",
 };
 
 const s = {
@@ -266,6 +266,41 @@ const s = {
     textTransform: "uppercase",
     fontFamily: "'Space Grotesk', sans-serif",
   },
+  ponderadoWrap: { margin: "20px 0" },
+  ponderadoLabel: {
+    fontSize: 9,
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    color: "#aaa",
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  ponderadoValor: {
+    fontFamily: "'Bebas Neue', sans-serif",
+    fontSize: 28,
+    color: "#0a0a0a",
+    marginBottom: 8,
+  },
+  ponderadoBarBg: {
+    position: "relative",
+    background: "#e8e8e8",
+    height: 10,
+    borderRadius: 5,
+    overflow: "visible",
+  },
+  ponderadoBarFill: {
+    height: "100%",
+    borderRadius: 5,
+    transition: "width 0.4s",
+  },
+  ponderadoLimiar: {
+    position: "absolute",
+    top: -4,
+    bottom: -4,
+    width: 2,
+    background: "#0a0a0a",
+  },
 };
 
 export default function Checklist() {
@@ -322,6 +357,35 @@ export default function Checklist() {
           <div style={s.resultTitle}>Avaliação concluída</div>
           {!isResponsavel && (
             <div style={s.resultScore}>{resultado.score_total}/12</div>
+          )}
+          {!isResponsavel && resultado.score_ponderado !== undefined && (
+            <div style={s.ponderadoWrap}>
+              <div style={s.ponderadoLabel}>
+                <span>Score ponderado por sexo</span>
+                <span>limiar {Number(resultado.limiar_usado).toFixed(2)}</span>
+              </div>
+              <div style={s.ponderadoValor}>
+                {Number(resultado.score_ponderado).toFixed(4)}
+              </div>
+              <div style={s.ponderadoBarBg}>
+                <div
+                  style={{
+                    ...s.ponderadoBarFill,
+                    width: `${Math.min(Number(resultado.score_ponderado) * 100, 100)}%`,
+                    background:
+                      resultado.score_ponderado >= resultado.limiar_usado
+                        ? "#e02020"
+                        : "#1a6fff",
+                  }}
+                ></div>
+                <div
+                  style={{
+                    ...s.ponderadoLimiar,
+                    left: `${Math.min(Number(resultado.limiar_usado) * 100, 100)}%`,
+                  }}
+                ></div>
+              </div>
+            </div>
           )}
           <div style={s.resultEnc}>
             Encaminhamento:{" "}

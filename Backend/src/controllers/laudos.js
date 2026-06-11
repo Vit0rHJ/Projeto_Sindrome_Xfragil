@@ -4,6 +4,13 @@ const pool = require("../config/db");
 const PDFDocument = require("pdfkit");
 const path = require("path");
 const fs = require("fs");
+const { registrarLog } = require("../utils/auditoria");
+
+const ENCAMINHAMENTO_LABEL = {
+  observacao: "Observação / Acompanhamento de rotina",
+  auxilio_clinico: "Auxílio Clínico Recomendado",
+  medicacao: "Encaminhamento Prioritário (avaliação genética recomendada)",
+};
 
 const gerarLaudo = async (req, res) => {
   const { consulta_id } = req.params;
@@ -68,9 +75,12 @@ const gerarLaudo = async (req, res) => {
 
     doc.fontSize(14).text("RESULTADO DO CHECKLIST");
     doc.moveDown(0.5);
-    doc.fontSize(12).text(`Score Total: ${checklist[0].score_total} / 12`);
+    doc.fontSize(12).text(`Score Total (bruto): ${checklist[0].score_total} / 12`);
     doc.text(
-      `Encaminhamento: ${checklist[0].encaminhamento.replace("_", " ").toUpperCase()}`,
+      `Score Ponderado por Sexo: ${Number(checklist[0].score_ponderado).toFixed(4)} (limiar: ${Number(checklist[0].limiar_usado).toFixed(2)}, sexo: ${checklist[0].paciente_sexo === "F" ? "Feminino" : "Masculino"})`,
+    );
+    doc.text(
+      `Encaminhamento: ${ENCAMINHAMENTO_LABEL[checklist[0].encaminhamento] || checklist[0].encaminhamento.replace("_", " ").toUpperCase()}`,
     );
     doc.text(`Preenchido por: ${checklist[0].preenchido_por}`);
     doc.moveDown();
@@ -93,6 +103,8 @@ const gerarLaudo = async (req, res) => {
         "INSERT INTO laudos (consulta_id, arquivo_pdf) VALUES (?, ?) ON DUPLICATE KEY UPDATE arquivo_pdf = ?", //se ja tiver um laudo com éssa consulta vai atualizar em vez de criar um duplicado
         [consulta_id, nomeArquivo, nomeArquivo],
       );
+
+      await registrarLog(req.usuario, "laudo_gerado", `consulta_id=${consulta_id}`);
 
       res.download(caminhoArquivo, nomeArquivo); //vai enviar o arquivo pdf com o dawload direto pro navegador
     });

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import api from '../services/api'
 
 const s = {
@@ -31,7 +32,7 @@ const s = {
 const encLabel = {
   observacao: 'Observação',
   auxilio_clinico: 'Auxílio Clínico',
-  medicacao: 'Medicação',
+  medicacao: 'Encaminhamento Prioritário',
 }
 
 const SINTOMAS_LABELS = [
@@ -58,6 +59,7 @@ export default function Laudo() {
   const navigate = useNavigate()
   const { consulta_id } = useParams()
   const [dados, setDados] = useState(null)
+  const [historico, setHistorico] = useState([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
 
@@ -67,6 +69,14 @@ export default function Laudo() {
       .catch(() => setErro('Erro ao carregar dados do laudo.'))
       .finally(() => setLoading(false))
   }, [consulta_id])
+
+  useEffect(() => {
+    const pacienteId = dados?.paciente?.id
+    if (!pacienteId) return
+    api.get(`/relatorios/historico/${pacienteId}`)
+      .then(r => setHistorico(r.data))
+      .catch(() => setHistorico([]))
+  }, [dados])
 
   async function downloadPdf() {
     try {
@@ -119,6 +129,28 @@ export default function Laudo() {
           </>
         )}
 
+        {historico.length > 1 && (
+          <>
+            <div style={s.sectionTitle}>evolução do score ponderado</div>
+            <div style={{ width: '100%', height: 200 }}>
+              <ResponsiveContainer>
+                <LineChart data={historico.map(h => ({
+                  data: formatDate(h.data_consulta),
+                  score_ponderado: Number(h.score_ponderado),
+                  limiar: Number(h.limiar_usado),
+                }))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                  <XAxis dataKey="data" tick={{ fontSize: 10 }} />
+                  <YAxis domain={[0, 1]} tick={{ fontSize: 10 }} />
+                  <Tooltip />
+                  <ReferenceLine y={Number(checklist?.limiar_usado)} stroke="#cc0000" strokeDasharray="4 4" label={{ value: 'limiar', fontSize: 9, fill: '#cc0000' }} />
+                  <Line type="monotone" dataKey="score_ponderado" stroke="#1a6fff" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        )}
+
         <div style={s.footer}>
           <button style={s.btnBack} onClick={() => navigate('/home')}>← Voltar</button>
           <button style={s.btnPdf} onClick={downloadPdf}>
@@ -137,6 +169,25 @@ export default function Laudo() {
             <div style={{ textAlign: 'center', padding: '14px 0', borderBottom: '1px solid #141414' }}>
               <div style={s.score}>{checklist.score_total}/12</div>
               <div style={s.scoreLabel}>score total</div>
+              {checklist.score_ponderado !== undefined && (
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ fontSize: 18, color: '#fff', fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1 }}>
+                    {Number(checklist.score_ponderado).toFixed(4)}
+                  </div>
+                  <div style={s.scoreLabel}>score ponderado (limiar {Number(checklist.limiar_usado).toFixed(2)})</div>
+                  <div style={{ position: 'relative', background: '#1a1a1a', height: 8, borderRadius: 4, marginTop: 8 }}>
+                    <div style={{
+                      height: '100%', borderRadius: 4,
+                      width: `${Math.min(Number(checklist.score_ponderado) * 100, 100)}%`,
+                      background: checklist.score_ponderado >= checklist.limiar_usado ? '#e02020' : '#1a6fff',
+                    }}></div>
+                    <div style={{
+                      position: 'absolute', top: -3, bottom: -3, width: 2, background: '#fff',
+                      left: `${Math.min(Number(checklist.limiar_usado) * 100, 100)}%`,
+                    }}></div>
+                  </div>
+                </div>
+              )}
               <div style={s.encTag}>{encLabel[checklist.encaminhamento] || checklist.encaminhamento}</div>
             </div>
 

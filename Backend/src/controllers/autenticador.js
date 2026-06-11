@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs"); // o bcscrypt é uma biblioteca para hash de senhas, isso é importante pra segurança do sistema, assim a gente não guarda as senhas explicitas no banco de dados, e mesmo que alguém consiga acesse o banco de dados, as senhas estarao protegidas
 const jwt = require("jsonwebtoken"); // o jwt é uma biblioteca para criar e verificar tokens de autenticação// o bcscrypt é uma biblioteca para hash de senhas, isso é importante pra segurança do sistema, assim a gente não guarda as senhas explicitas no banco de dados, e mesmo que alguém consiga acesse o banco de dados, as senhas estarao protegidas
 const pool = require("../config/db"); // importa a pool de conexões com o banco pra fazer as queries e verificar se o usuario existe e se a senha ta certa
+const { registrarLog } = require("../utils/auditoria"); // registra tentativas de login na trilha de auditoria (RNF08 / LGPD)
 
 //status http
 // 400 é pra dados faltando
@@ -27,6 +28,7 @@ const login = async (req, res) => {
 
     //se não encontrou nenhum usuário com esse email
     if (rows.length === 0) {
+      await registrarLog(null, "login_falhou", `email=${email}`);
       return res.status(401).json({ mensagem: "Email ou senha incorretos." });
     }
 
@@ -35,8 +37,11 @@ const login = async (req, res) => {
     const senhaCorreta = await bcrypt.compare(senha, usuario.senha_hash); //compara a senha digitada com o hash salvo, no banco a senha nao é salva como texto éla é salva em hash, isso faz a comparacao correta
 
     if (!senhaCorreta) {
+      await registrarLog(usuario, "login_falhou", `email=${email}`);
       return res.status(401).json({ mensagem: "Email ou senha incorretos." });
     }
+
+    await registrarLog(usuario, "login", `email=${email}`);
 
     // gera o token JWT com os dados do usuário, pra quando ele chegar na proxima requisicao vamos saber se é admin ou medico, sem precisar acessar o banco
     const token = jwt.sign(

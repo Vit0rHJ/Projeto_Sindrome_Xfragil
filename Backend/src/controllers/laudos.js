@@ -12,6 +12,22 @@ const ENCAMINHAMENTO_LABEL = {
   medicacao: "Encaminhamento Prioritário (avaliação genética recomendada)",
 };
 
+// rotulos dos 12 sintomas na ordem em que aparecem no pdf (2 colunas de 6)
+const SINTOMAS_PDF = [
+  ["sin_atraso_fala", "Atraso na fala"],
+  ["sin_dif_aprendizado", "Dificuldade de aprendizado"],
+  ["sin_deficit_atencao", "Déficit de atenção"],
+  ["sin_def_intelectual", "Deficiência intelectual"],
+  ["sin_hiperatividade", "Hiperatividade"],
+  ["sin_agressividade", "Agressividade"],
+  ["sin_evita_contato_visual", "Evita contato visual"],
+  ["sin_evita_contato_fisico", "Evita contato físico"],
+  ["sin_movimentos_repetitivos", "Movimentos repetitivos"],
+  ["sin_frouxidao", "Frouxidão ligamentar"],
+  ["sin_macroquidia", "Macroquidia"],
+  ["sin_face_alongada", "Face alongada"],
+];
+
 const gerarLaudo = async (req, res) => {
   const { consulta_id } = req.params;
 
@@ -40,8 +56,16 @@ const gerarLaudo = async (req, res) => {
       return res.status(404).json({ mensagem: "Consulta não encontrada." });
     }
 
+    // busca o checklist completo (as 12 respostas) junto com os dados do
+    // paciente e do medico que o pdf precisa exibir
     const [checklist] = await pool.query(
-      "SELECT * FROM vw_checklist_resumo WHERE consulta_id = ?",
+      `SELECT ch.*, p.sexo AS paciente_sexo, p.nome_responsavel,
+              u.crm, u.especialidade
+       FROM checklist ch
+       JOIN consultas c ON c.id = ch.consulta_id
+       JOIN pacientes p ON p.id = c.paciente_id
+       JOIN usuarios u ON u.id = c.medico_id
+       WHERE ch.consulta_id = ?`,
       [consulta_id],
     );
 
@@ -65,49 +89,258 @@ const gerarLaudo = async (req, res) => {
     const stream = fs.createWriteStream(caminhoArquivo);
     doc.pipe(stream);
     //aqui é aonde vamos escrever o conteudo do pdf, da pra define fonte texto e pa
-    doc.fontSize(20).text("LAUDO DE CONSULTA", { align: "center" });
-    doc.fontSize(12).text("Sistema de Identificação da Síndrome do X Frágil", {
-      align: "center",
-    });
-    doc.moveDown();
-    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-    doc.moveDown();
+    const ch = checklist[0];
+    const c0 = consulta[0];
+    const AZUL = "#1a6fff";
+    const PRETO = "#0a0a0a";
+    const CINZA = "#888888";
+    const CINZA_CLARO = "#e8e8e8";
+    const encCor = {
+      observacao: AZUL,
+      auxilio_clinico: "#e8a020",
+      medicacao: "#e02020",
+    };
 
-    doc.fontSize(14).text("DADOS DA CONSULTA");
-    doc.moveDown(0.5);
-    doc.fontSize(12).text(`Médico: ${consulta[0].medico_nome}`);
-    doc.text(`Paciente: ${consulta[0].paciente_nome}`);
-    doc.text(`CPF: ${consulta[0].paciente_cpf}`);
-    doc.text(
-      `Data: ${new Date(consulta[0].data_consulta).toLocaleDateString("pt-BR")}`,
-    );
-    doc.text(`Status: ${consulta[0].status}`);
-    doc.moveDown();
+    // ---------- cabeçalho institucional (faixa preta + filete azul) ----------
+    doc.rect(0, 0, doc.page.width, 86).fill(PRETO);
+    doc.rect(0, 86, doc.page.width, 3).fill(AZUL);
+    doc
+      .fillColor("#ffffff")
+      .font("Helvetica-Bold")
+      .fontSize(24)
+      .text("EU DIGO X", 50, 24, { characterSpacing: 4 });
+    doc
+      .fillColor("#8899bb")
+      .font("Helvetica")
+      .fontSize(8)
+      .text("SISTEMA DE TRIAGEM CLÍNICA — SÍNDROME DO X FRÁGIL", 50, 56, {
+        characterSpacing: 2,
+      });
+    doc
+      .fontSize(8)
+      .text(`LAUDO Nº ${String(consulta_id).padStart(5, "0")}`, 0, 26, {
+        align: "right",
+        width: doc.page.width - 50,
+      })
+      .text(new Date().toLocaleDateString("pt-BR"), 0, 40, {
+        align: "right",
+        width: doc.page.width - 50,
+      });
 
-    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-    doc.moveDown();
+    // ---------- título ----------
+    let y = 112;
+    doc
+      .fillColor(PRETO)
+      .font("Helvetica-Bold")
+      .fontSize(16)
+      .text("LAUDO DE AVALIAÇÃO CLÍNICA", 50, y);
+    y += 30;
 
-    doc.fontSize(14).text("RESULTADO DO CHECKLIST");
-    doc.moveDown(0.5);
-    doc.fontSize(12).text(`Score Total (bruto): ${checklist[0].score_total} / 12`);
-    doc.text(
-      `Score Ponderado por Sexo: ${Number(checklist[0].score_ponderado).toFixed(4)} (limiar: ${Number(checklist[0].limiar_usado).toFixed(2)}, sexo: ${checklist[0].paciente_sexo === "F" ? "Feminino" : "Masculino"})`,
-    );
-    doc.text(
-      `Encaminhamento: ${ENCAMINHAMENTO_LABEL[checklist[0].encaminhamento] || checklist[0].encaminhamento.replace("_", " ").toUpperCase()}`,
-    );
-    doc.text(`Preenchido por: ${checklist[0].preenchido_por}`);
-    doc.moveDown();
+    // ---------- identificação em duas colunas (paciente | consulta) ----------
+    const col1 = 50;
+    const col2 = 312;
+    const larguraCol = 250;
 
-    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-    doc.moveDown();
+    function linhaInfo(x, yy, rotulo, valor) {
+      doc
+        .font("Helvetica")
+        .fontSize(7)
+        .fillColor(CINZA)
+        .text(rotulo.toUpperCase(), x, yy, { characterSpacing: 1 });
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(10)
+        .fillColor(PRETO)
+        .text(valor || "—", x, yy + 9, { width: larguraCol - 10 });
+      return yy + 26;
+    }
 
     doc
-      .fontSize(10)
-      .text(`Documento gerado em ${new Date().toLocaleString("pt-BR")}`, {
-        align: "center",
-        color: "gray",
-      });
+      .font("Helvetica-Bold")
+      .fontSize(9)
+      .fillColor(AZUL)
+      .text("PACIENTE", col1, y, { characterSpacing: 2 })
+      .text("CONSULTA", col2, y, { characterSpacing: 2 });
+    doc
+      .moveTo(col1, y + 13)
+      .lineTo(col1 + larguraCol, y + 13)
+      .strokeColor(CINZA_CLARO)
+      .stroke();
+    doc
+      .moveTo(col2, y + 13)
+      .lineTo(col2 + larguraCol, y + 13)
+      .stroke();
+
+    let y1 = y + 20;
+    let y2 = y + 20;
+    y1 = linhaInfo(col1, y1, "Nome", c0.paciente_nome);
+    y1 = linhaInfo(col1, y1, "CPF", c0.paciente_cpf);
+    y1 = linhaInfo(col1, y1, "Sexo", ch.paciente_sexo === "F" ? "Feminino" : "Masculino");
+    y1 = linhaInfo(col1, y1, "Responsável", ch.nome_responsavel);
+
+    y2 = linhaInfo(col2, y2, "Médico responsável", c0.medico_nome + (ch.crm ? ` — CRM ${ch.crm}` : ""));
+    y2 = linhaInfo(col2, y2, "Especialidade", ch.especialidade);
+    y2 = linhaInfo(col2, y2, "Data da consulta", new Date(c0.data_consulta).toLocaleDateString("pt-BR"));
+    y2 = linhaInfo(col2, y2, "Checklist preenchido por", ch.preenchido_por === "medico" ? "Médico" : "Responsável");
+
+    y = Math.max(y1, y2) + 6;
+
+    // ---------- resultado da avaliação ----------
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(9)
+      .fillColor(AZUL)
+      .text("RESULTADO DA AVALIAÇÃO", col1, y, { characterSpacing: 2 });
+    doc.moveTo(col1, y + 13).lineTo(562, y + 13).strokeColor(CINZA_CLARO).stroke();
+    y += 24;
+
+    const scorePond = Number(ch.score_ponderado);
+    const limiar = Number(ch.limiar_usado);
+    const acima = scorePond >= limiar;
+
+    doc
+      .font("Helvetica")
+      .fontSize(7)
+      .fillColor(CINZA)
+      .text("SCORE TOTAL (SOMA SIMPLES)", col1, y, { characterSpacing: 1 });
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(20)
+      .fillColor(PRETO)
+      .text(`${ch.score_total} / 12`, col1, y + 10);
+
+    doc
+      .font("Helvetica")
+      .fontSize(7)
+      .fillColor(CINZA)
+      .text("SCORE PONDERADO POR SEXO", col2, y, { characterSpacing: 1 });
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(20)
+      .fillColor(acima ? "#e02020" : AZUL)
+      .text(scorePond.toFixed(4), col2, y + 10);
+    y += 44;
+
+    // barra do score ponderado com o marcador do limiar (desenho vetorial)
+    const barX = col1;
+    const barW = 512;
+    const barH = 9;
+    doc.roundedRect(barX, y, barW, barH, 4).fill(CINZA_CLARO);
+    if (scorePond > 0) {
+      doc
+        .roundedRect(barX, y, Math.min(scorePond, 1) * barW, barH, 4)
+        .fill(acima ? "#e02020" : AZUL);
+    }
+    const tickX = barX + Math.min(limiar, 1) * barW;
+    doc.rect(tickX - 1, y - 3, 2, barH + 6).fill(PRETO);
+    doc
+      .font("Helvetica")
+      .fontSize(7)
+      .fillColor(CINZA)
+      .text("0.00", barX, y + 13)
+      .text(
+        `limiar ${limiar.toFixed(2)} (${ch.paciente_sexo === "F" ? "feminino" : "masculino"})`,
+        tickX - 60,
+        y + 13,
+        { width: 120, align: "center" },
+      )
+      .text("1.00", barX + barW - 25, y + 13, { width: 25, align: "right" });
+    y += 32;
+
+    // box destacado do encaminhamento
+    const encTexto = ENCAMINHAMENTO_LABEL[ch.encaminhamento] || ch.encaminhamento;
+    const cor = encCor[ch.encaminhamento] || CINZA;
+    doc.roundedRect(col1, y, 512, 30, 4).lineWidth(1.2).strokeColor(cor).stroke();
+    doc
+      .font("Helvetica")
+      .fontSize(7)
+      .fillColor(CINZA)
+      .text("ENCAMINHAMENTO", col1 + 12, y + 6, { characterSpacing: 1 });
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(11)
+      .fillColor(cor)
+      .text(encTexto, col1 + 12, y + 15);
+    y += 44;
+
+    // ---------- sintomas avaliados (2 colunas de 6 com caixinhas) ----------
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(9)
+      .fillColor(AZUL)
+      .text("SINTOMAS AVALIADOS", col1, y, { characterSpacing: 2 });
+    doc.moveTo(col1, y + 13).lineTo(562, y + 13).strokeColor(CINZA_CLARO).stroke();
+    y += 22;
+
+    SINTOMAS_PDF.forEach(([colSint, label], i) => {
+      const x = i < 6 ? col1 : col2;
+      const yy = y + (i % 6) * 17;
+      const marcado = !!ch[colSint];
+      doc
+        .rect(x, yy, 9, 9)
+        .lineWidth(0.8)
+        .strokeColor(marcado ? AZUL : "#cccccc")
+        .stroke();
+      if (marcado) {
+        doc.rect(x + 1.5, yy + 1.5, 6, 6).fill(AZUL);
+      }
+      doc
+        .font(marcado ? "Helvetica-Bold" : "Helvetica")
+        .fontSize(9)
+        .fillColor(marcado ? PRETO : CINZA)
+        .text(label, x + 16, yy + 0.5);
+    });
+    y += 6 * 17 + 10;
+
+    // ---------- observações clínicas (se houver) ----------
+    if (ch.observacoes) {
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(9)
+        .fillColor(AZUL)
+        .text("OBSERVAÇÕES CLÍNICAS", col1, y, { characterSpacing: 2 });
+      doc.moveTo(col1, y + 13).lineTo(562, y + 13).strokeColor(CINZA_CLARO).stroke();
+      y += 20;
+      doc
+        .font("Helvetica")
+        .fontSize(9)
+        .fillColor("#444444")
+        .text(ch.observacoes, col1, y, { width: 512, height: 56, ellipsis: true });
+      y += Math.min(doc.heightOfString(ch.observacoes, { width: 512 }), 56) + 14;
+    }
+
+    // ---------- assinatura ----------
+    const assinaturaY = Math.max(y + 28, 640);
+    doc.moveTo(col1, assinaturaY).lineTo(col1 + 220, assinaturaY).strokeColor("#999999").stroke();
+    doc
+      .font("Helvetica")
+      .fontSize(8)
+      .fillColor(CINZA)
+      .text(`${c0.medico_nome}${ch.crm ? ` — CRM ${ch.crm}` : ""}`, col1, assinaturaY + 5)
+      .text("Assinatura do médico responsável", col1, assinaturaY + 16);
+
+    // ---------- rodapé ----------
+    // zera a margem inferior para o texto do rodapé não disparar
+    // a quebra automática de página do pdfkit
+    doc.page.margins.bottom = 0;
+    const rodapeY = doc.page.height - 70;
+    doc.moveTo(50, rodapeY).lineTo(562, rodapeY).strokeColor(CINZA_CLARO).stroke();
+    doc
+      .font("Helvetica")
+      .fontSize(7)
+      .fillColor("#999999")
+      .text(
+        "Este documento é uma ferramenta de apoio à triagem clínica e não substitui a avaliação médica presencial nem o exame genético confirmatório (PCR/Southern Blot).",
+        50,
+        rodapeY + 8,
+        { width: 512, align: "center" },
+      )
+      .text(
+        `Gerado em ${new Date().toLocaleString("pt-BR")} — Eu Digo X · dados protegidos nos termos da LGPD (Lei nº 13.709/2018)`,
+        50,
+        rodapeY + 28,
+        { width: 512, align: "center" },
+      );
     //aqui ele vai servir pra sinalizar que acabamos de escrever, depois do    fazer a parada dele vai salvar no baco e enviar para o usuario baixar
     doc.end();
 

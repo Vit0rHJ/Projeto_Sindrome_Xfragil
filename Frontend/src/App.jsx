@@ -7,6 +7,7 @@ import CadastroResponsavel from './pages/CadastroResponsavel'
 import Home from './pages/Home'
 import Cadastro from './pages/Cadastro'
 import Checklist from './pages/Checklist'
+import Pacientes from './pages/Pacientes'
 import Laudo from './pages/Laudo'
 import Laudos from './pages/Laudos'
 import Secretaria from './pages/Secretaria'
@@ -29,6 +30,7 @@ export default function App() {
         <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
           <Route path="/home" element={<Home />} />
           <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/pacientes" element={<Pacientes />} />
           <Route path="/checklist" element={<Checklist />} />
           <Route path="/laudo/:consulta_id" element={<Laudo />} />  
           <Route path="/laudos" element={<Laudos />} />

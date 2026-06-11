@@ -124,6 +124,11 @@ export default function Layout() {
       perfis: ["admin", "medico", "secretaria", "responsavel"],
     },
     {
+      label: "Pacientes",
+      path: "/pacientes",
+      perfis: ["admin", "medico", "secretaria", "responsavel"],
+    },
+    {
       label: "Novo Paciente",
       path: "/cadastro",
       perfis: ["admin", "medico", "responsavel"],

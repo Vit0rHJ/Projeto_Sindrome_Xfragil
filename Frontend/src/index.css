@@ -2,3 +2,76 @@
 body { font-family: 'Space Grotesk', sans-serif; background: #fff; color: #0a0a0a; }
 button { cursor: pointer; font-family: 'Space Grotesk', sans-serif; }
 input, textarea, select { font-family: 'Space Grotesk', sans-serif; }
+
+/* ------------------------------------------------------------------ */
+/* Micro-interações globais — funcionam por cima dos estilos inline    */
+/* das páginas, sem precisar alterar nenhum componente.                */
+/* ------------------------------------------------------------------ */
+
+/* transição suave em tudo que é interativo */
+button, a, input, textarea, select, tr {
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+    filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+/* botões: leve elevação e brilho no hover */
+button:hover:not(:disabled) {
+  filter: brightness(1.18);
+  transform: translateY(-1px);
+}
+button:active:not(:disabled) {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* campos de formulário: foco com a cor da marca
+   (o !important é necessário porque a borda vem de estilo inline) */
+input:focus, textarea:focus, select:focus {
+  border-color: #1a6fff !important;
+  box-shadow: 0 0 0 3px rgba(26, 111, 255, 0.12);
+  outline: none;
+}
+
+/* linhas de tabela: destaque sutil ao passar o mouse */
+tbody tr:hover {
+  background: #f7faff;
+}
+
+/* seleção de texto na cor da marca */
+::selection {
+  background: #1a6fff;
+  color: #fff;
+}
+
+/* scrollbar fina e discreta, combinando com o tema */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #c8d2e0;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1a6fff;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c8d2e0 transparent;
+}
+
+/* entrada suave do conteúdo de cada página */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+#root {
+  animation: fadeInUp 0.25s ease-out;
+}

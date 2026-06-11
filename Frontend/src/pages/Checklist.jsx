@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 // o useSearchParams le o consulta_id da url, por exemplo em /checklist?consulta_id=1 ele retorna 1
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getUser } from "../services/api";
@@ -316,6 +316,19 @@ export default function Checklist() {
   const [erro, setErro] = useState("");
   // quando o checklist é salvo com sucesso , o backend retorna o score e encaminhamento, mostarndo uma tela de resultado em vez de forn=mulario
   const [resultado, setResultado] = useState(null);
+  const [consulta, setConsulta] = useState(null);
+
+  // busca os dados da consulta para mostrar o nome do paciente no cabeçalho
+  useEffect(() => {
+    if (!consultaId) return;
+    api
+      .get("/consultas")
+      .then((r) => {
+        const c = r.data.find((item) => item.id === Number(consultaId));
+        if (c) setConsulta(c);
+      })
+      .catch(() => {});
+  }, [consultaId]);
 
   const total = Object.values(marcados).filter(Boolean).length;
 
@@ -436,7 +449,16 @@ export default function Checklist() {
       <div style={s.eye}>avaliação clínica</div>
       <div style={s.title}>Checklist de Sintomas</div>
       <div style={s.sub}>
-        Consulta #{consultaId} — marque os sintomas observados no paciente
+        Consulta #{consultaId}
+        {consulta?.paciente_nome && (
+          <>
+            {" — paciente: "}
+            <strong style={{ color: "#555" }}>{consulta.paciente_nome}</strong>
+            {consulta.data_consulta &&
+              ` (${new Date(consulta.data_consulta).toLocaleDateString("pt-BR")})`}
+          </>
+        )}
+        {" — marque os sintomas observados"}
       </div>
 
       <div style={s.progressTxt}>

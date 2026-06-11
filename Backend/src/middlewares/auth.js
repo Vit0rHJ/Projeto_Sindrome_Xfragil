@@ -36,7 +36,16 @@ const adminOuSecretaria = (req, res, next) => {
     next();
 };
 
-module.exports = { autenticar, apenasAdmin, adminOuSecretaria };
+// middleware para rotas clinicas (admin, secretaria e medico), bloqueia o responsavel
+// porque score e encaminhamento nao podem aparecer para ele (regra do requisito)
+const equipeClinica = (req, res, next) => {
+    if (req.usuario.perfil === 'responsavel') {
+        return res.status(403).json({ mensagem: 'Acesso restrito à equipe clínica.' });
+    }
+    next();
+};
+
+module.exports = { autenticar, apenasAdmin, adminOuSecretaria, equipeClinica };
 // as rotas devem ficar +- assim
 //rota do admin router.post('/rota', autenticar, apenasAdmin, controller);
 //e rota de qualquer usuario router.get('/rota', autenticar, controller);

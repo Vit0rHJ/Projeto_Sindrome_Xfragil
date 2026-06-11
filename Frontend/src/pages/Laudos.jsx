@@ -16,6 +16,12 @@ const s = {
   bp: { display: 'inline-block', fontSize: 8, letterSpacing: 1, padding: '2px 8px', color: '#e8a020', border: '1px solid #e8a020' },
 }
 
+const encBadge = {
+  observacao:      { label: 'Observação',     color: '#1a6fff' },
+  auxilio_clinico: { label: 'Auxílio Clínico', color: '#e8a020' },
+  medicacao:       { label: 'Prioritário',     color: '#e02020' },
+}
+
 function formatDate(d) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('pt-BR')
@@ -28,7 +34,8 @@ export default function Laudos() {
 
   useEffect(() => {
     api.get('/consultas')
-      .then(r => setConsultas(r.data))
+      // so tem laudo quem ja tem checklist preenchido (encaminhamento vem da view)
+      .then(r => setConsultas(r.data.filter(c => c.encaminhamento)))
       .finally(() => setLoading(false))
   }, [])
 
@@ -48,12 +55,13 @@ export default function Laudos() {
               <th style={s.th}>Médico</th>
               <th style={s.th}>Data</th>
               <th style={s.th}>Status</th>
+              <th style={s.th}>Resultado</th>
               <th style={s.th}></th>
             </tr>
           </thead>
           <tbody>
             {consultas.length === 0 ? (
-              <tr><td style={{ ...s.td, color: '#bbb', fontStyle: 'italic' }} colSpan={5}>Nenhuma consulta encontrada</td></tr>
+              <tr><td style={{ ...s.td, color: '#bbb', fontStyle: 'italic' }} colSpan={6}>Nenhuma consulta com checklist preenchido</td></tr>
             ) : (
               consultas.map(c => (
                 <tr key={c.id}>
@@ -67,6 +75,15 @@ export default function Laudos() {
                   <td style={s.td}>{formatDate(c.data_consulta)}</td>
                   <td style={s.td}>
                     <span style={c.status === 'realizada' ? s.bd : s.bp}>{c.status}</span>
+                  </td>
+                  <td style={s.td}>
+                    <span style={{
+                      display: 'inline-block', fontSize: 8, letterSpacing: 1, padding: '2px 8px',
+                      color: encBadge[c.encaminhamento]?.color || '#888',
+                      border: `1px solid ${encBadge[c.encaminhamento]?.color || '#888'}`,
+                    }}>
+                      {encBadge[c.encaminhamento]?.label || c.encaminhamento}
+                    </span>
                   </td>
                   <td style={{ ...s.td, color: '#1a6fff', cursor: 'pointer', fontSize: 10, letterSpacing: 1 }}
                     onClick={() => navigate(`/laudo/${c.id}`)}>

@@ -4,7 +4,7 @@ const listarPrechecklist = async (req, res) => {
   //busca todos os checklists preenchidos por responsaveis, a secretaria vai utilizar isso para ver quais pacientes precisam ser direcionados para um medico
   try {
     const [checklists] = await pool.query(
-      `SELECT 
+      `SELECT
                 ch.id,
                 ch.consulta_id,
                 ch.score_total,
@@ -15,12 +15,16 @@ const listarPrechecklist = async (req, res) => {
                 p.cidade,
                 p.estado,
                 c.status,
-                c.medico_id
+                CASE WHEN u.perfil = 'medico' THEN c.medico_id ELSE NULL END AS medico_id
             FROM checklist ch
             JOIN consultas c ON c.id = ch.consulta_id
             JOIN pacientes p ON p.id = c.paciente_id
-            WHERE ch.preenchido_por = 'responsavel'   
+            JOIN usuarios u ON u.id = c.medico_id
+            WHERE ch.preenchido_por = 'responsavel'
             ORDER BY ch.criado_em DESC`,
+      // o CASE é necessario porque quando o responsavel cria a consulta, o medico_id
+      // guarda temporariamente o id do proprio responsavel ate a secretaria direcionar;
+      // sem isso o front mostraria todo mundo como "Direcionado" e o botao nunca apareceria
       //WHERE ch.preenchido_por = 'responsavel', serve para para filtrar apenas pre checklists, nao aqueles feitos pelos medicos
     );
 

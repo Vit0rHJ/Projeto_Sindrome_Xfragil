@@ -52,6 +52,12 @@ const listarConsultas = async (req, res) => {
       );
     }
 
+    // o encaminhamento vem da view para alimentar os contadores da home,
+    // mas o responsavel nao pode ver esse dado, entao removemos para ele
+    if (req.usuario.perfil === "responsavel") {
+      consultas = consultas.map(({ encaminhamento, ...resto }) => resto);
+    }
+
     return res.status(200).json(consultas);
   } catch (erro) {
     console.error("Erro ao listar consultas:", erro);
@@ -69,10 +75,18 @@ const atualizarStatus = async (req, res) => {
   }
 
   try {
-    await pool.query(
-      "UPDATE consultas SET status = ? WHERE id = ? AND medico_id = ?",
-      [status, id, req.usuario.id],
-    );
+    if (req.usuario.perfil === "admin") {
+      // o admin pode atualizar o status de qualquer consulta
+      await pool.query("UPDATE consultas SET status = ? WHERE id = ?", [
+        status,
+        id,
+      ]);
+    } else {
+      await pool.query(
+        "UPDATE consultas SET status = ? WHERE id = ? AND medico_id = ?",
+        [status, id, req.usuario.id],
+      );
+    }
 
     return res.status(200).json({ mensagem: "Status atualizado com sucesso." });
   } catch (erro) {

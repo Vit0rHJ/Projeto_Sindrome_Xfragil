@@ -111,7 +111,7 @@ const exportarCsv = async (req, res) => {
 
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", "attachment; filename=relatorio_avaliacoes.csv");
-    return res.status(200).send("﻿" + csv);
+    return res.status(200).send("﻿" + csv); // BOM para o Excel abrir acentos corretamente
   } catch (erro) {
     console.error("Erro ao exportar CSV:", erro);
     return res.status(500).json({ mensagem: "Erro interno do servidor." });

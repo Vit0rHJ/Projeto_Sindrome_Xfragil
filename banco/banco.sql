@@ -216,10 +216,12 @@ SELECT
     p.nome AS paciente_nome,
     p.cpf  AS paciente_cpf,
     m.id   AS medico_id,
-    m.nome AS medico_nome
+    m.nome AS medico_nome,
+    ch.encaminhamento
 FROM consultas c
 JOIN pacientes p ON p.id = c.paciente_id
-JOIN usuarios  m ON m.id = c.medico_id;
+JOIN usuarios  m ON m.id = c.medico_id
+LEFT JOIN checklist ch ON ch.consulta_id = c.id;
 
 CREATE VIEW vw_checklist_resumo AS
 SELECT

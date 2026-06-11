@@ -25,6 +25,11 @@ const cadastrarPaciente = async (req, res) => {
             return res.status(409).json({ mensagem: 'CPF já cadastrado.' });
         }
 
+      // se quem cadastra é um responsavel, guardamos o vinculo dele em responsavel_id,
+      // assim ele continua vendo o paciente mesmo depois da secretaria direcionar
+      // a consulta para um medico (que troca o medico_id)
+      const responsavelId = req.usuario.perfil === 'responsavel' ? req.usuario.id : null;
+
       const [resultado] = await pool.query(
             `INSERT INTO pacientes (
                 nome, cpf, data_nascimento, sexo, nome_mae, nome_pai,
@@ -32,8 +37,8 @@ const cadastrarPaciente = async (req, res) => {
                 nome_responsavel, cpf_responsavel, telefone_responsavel, grau_parentesco,
                 ja_fez_exame_dna, interesse_exame_pcr, resultado_exame,
                 diagnostico_autismo, tem_irmaos, historico_familiar_di,
-                historico_menopausa, historico_ataxia, medico_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                historico_menopausa, historico_ataxia, medico_id, responsavel_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 // o ||0  é para campos opcionais, se eles nao forem enviados, o padra deles sempre vai ser 0
                 // o || null é uma parada parecida mas é no caso de um enum opcional, se ele  nao for enviaado ele fica null
@@ -42,7 +47,7 @@ const cadastrarPaciente = async (req, res) => {
                 nome_responsavel, cpf_responsavel, telefone_responsavel, grau_parentesco,
                 ja_fez_exame_dna || 0, interesse_exame_pcr || 0, resultado_exame || null,
                 diagnostico_autismo || 0, tem_irmaos || 0, historico_familiar_di || 'nao',
-                historico_menopausa || 'nao', historico_ataxia || 'nao', req.usuario.id
+                historico_menopausa || 'nao', historico_ataxia || 'nao', req.usuario.id, responsavelId
             ]
         );
 
@@ -61,6 +66,13 @@ const listarPacientes = async (req, res) => {
         if (req.usuario.perfil === 'admin' || req.usuario.perfil === 'secretaria') { // vai verificar se o perfil esta dentro do token, se for o token de admin ou secretaria vai buscar todos os pacientes, se for o token do medico vai filtrar so os dele
             [pacientes] = await pool.query(
                 'SELECT id, nome, cpf, email, telefone, data_nascimento, cidade, estado FROM pacientes'
+            );
+        } else if (req.usuario.perfil === 'responsavel') {
+            // o responsavel ve os pacientes que ele mesmo cadastrou, mesmo depois
+            // que a secretaria direcionar para um medico (o medico_id muda, o responsavel_id nao)
+            [pacientes] = await pool.query(
+                'SELECT id, nome, cpf, email, telefone, data_nascimento, cidade, estado FROM pacientes WHERE responsavel_id = ? OR medico_id = ?',
+                [req.usuario.id, req.usuario.id]
             );
         } else {
             [pacientes] = await pool.query(

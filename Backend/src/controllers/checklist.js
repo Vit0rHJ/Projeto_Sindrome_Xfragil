@@ -72,15 +72,17 @@ const salvarChecklist = async (req, res) => {
 
   try {
     // aqui a gente vai verificar se a consulta existe e se o usuário tem permissão para acessar ela, porque só o médico responsável ou o responsável pelo paciente podem preencher o checklist, entao a gente precisa verificar isso antes de permitir que eles preencham
-    let consulta; // estamos usando o let aqui porque a variavel consulta vai ser atribuida dentro do if, se fosse const daria erro porque a const precisa ser atribuida no momento da declaracao, e como a gente tem essa condicao de verificacao diferente pra medico e responsavel, a gente nao consegue atribuir a consulta no momento da declaracao, entao a gente declara ela como let sem valor, e depois dentro do if a gente atribui o valor dela com o resultado da query correta dependendo do perfil do usuario
+    let consulta; // estamos usando o let aqui porque a variavel consulta vai ser atribuida dentro do if, se fosse const daria erro porque a const precisa ser atribuida no momento da declaracao, e como a gente tem essa condicao de verificacao diferente pra cada perfil, a gente nao consegue atribuir a consulta no momento da declaracao, entao a gente declara ela como let sem valor, e depois dentro do if a gente atribui o valor dela com o resultado da query correta dependendo do perfil do usuario
 
-    if (req.usuario.perfil === "responsavel") {
-      // quando o responsavel cria a consulta, o medico_id fica com o id dele ate a secretaria atribuir um medico
-      [consulta] = await pool.query(
-        "SELECT id FROM consultas WHERE id = ? AND medico_id = ?",
-        [consulta_id, req.usuario.id],
-      );
+    if (req.usuario.perfil === "admin") {
+      // o admin pode preencher o checklist de qualquer consulta, entao basta ela existir
+      [consulta] = await pool.query("SELECT id FROM consultas WHERE id = ?", [
+        consulta_id,
+      ]);
     } else {
+      // medico só preenche consultas dele; quando o responsavel cria a consulta,
+      // o medico_id fica com o id dele ate a secretaria atribuir um medico,
+      // entao a mesma verificacao serve para os dois perfis
       [consulta] = await pool.query(
         "SELECT id FROM consultas WHERE id = ? AND medico_id = ?",
         [consulta_id, req.usuario.id],
@@ -178,6 +180,15 @@ const salvarChecklist = async (req, res) => {
 
     await registrarLog(req.usuario, "checklist_salvo", `consulta_id=${consulta_id}, score_ponderado=${score_ponderado}, encaminhamento=${encaminhamento}`);
 
+    // o responsavel nao pode ver score nem encaminhamento (regra do requisito),
+    // entao para ele devolvemos apenas a confirmacao de envio
+    if (req.usuario.perfil === "responsavel") {
+      return res.status(201).json({
+        mensagem: "Checklist enviado com sucesso.",
+        consulta_id: Number(consulta_id),
+      });
+    }
+
     return res.status(201).json({
       mensagem: "Checklist salvo com sucesso.",
       consulta_id: Number(consulta_id),
@@ -194,6 +205,11 @@ const salvarChecklist = async (req, res) => {
 
 const buscarChecklist = async (req, res) => {
   const { consulta_id } = req.params;
+
+  // o resumo do checklist contem score e encaminhamento, que o responsavel nao pode ver
+  if (req.usuario.perfil === "responsavel") {
+    return res.status(403).json({ mensagem: "Acesso restrito à equipe clínica." });
+  }
 
   try {
     const [checklist] = await pool.query(

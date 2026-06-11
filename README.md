@@ -147,7 +147,7 @@ POST   /api/auth/login                    login (público)
 POST   /api/auth/cadastro-responsavel     cadastro de responsável (público)
 
 POST   /api/usuarios                      cadastrar médico/secretaria (admin)
-GET    /api/usuarios                      listar médicos ativos (admin)
+GET    /api/usuarios                      listar médicos ativos (admin/secretaria)
 PUT    /api/usuarios/:id                  editar médico (admin)
 PATCH  /api/usuarios/:id/desativar        desativar médico (admin)
 PATCH  /api/usuarios/:id/foto             atualizar foto (autenticado)

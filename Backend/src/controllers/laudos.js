@@ -15,12 +15,26 @@ const ENCAMINHAMENTO_LABEL = {
 const gerarLaudo = async (req, res) => {
   const { consulta_id } = req.params;
 
+  // laudo contem score e dados clinicos, o responsavel nao pode acessar
+  if (req.usuario.perfil === "responsavel") {
+    return res.status(403).json({ mensagem: "Acesso restrito à equipe clínica." });
+  }
+
   try {
     //vai buscar os dados da consulta e da checklist no banco, se ele nao encontrar algum deles vai bloquear e retornar erro pq nao existe laudo sem o checklist preenchido
-    const [consulta] = await pool.query(
-      "SELECT * FROM vw_consulta_completa WHERE id = ? AND medico_id = ?",
-      [consulta_id, req.usuario.id],
-    );
+    // admin e secretaria podem gerar laudo de qualquer consulta, o medico apenas das dele
+    let consulta;
+    if (req.usuario.perfil === "medico") {
+      [consulta] = await pool.query(
+        "SELECT * FROM vw_consulta_completa WHERE id = ? AND medico_id = ?",
+        [consulta_id, req.usuario.id],
+      );
+    } else {
+      [consulta] = await pool.query(
+        "SELECT * FROM vw_consulta_completa WHERE id = ?",
+        [consulta_id],
+      );
+    }
 
     if (consulta.length === 0) {
       return res.status(404).json({ mensagem: "Consulta não encontrada." });
@@ -99,14 +113,22 @@ const gerarLaudo = async (req, res) => {
 
     stream.on("finish", async () => {
       // vai esperarar o arquivo terminar de ser gravado no disco, é importante pra nao mandar um arquivo incompleto
-      await pool.query(
-        "INSERT INTO laudos (consulta_id, arquivo_pdf) VALUES (?, ?) ON DUPLICATE KEY UPDATE arquivo_pdf = ?", //se ja tiver um laudo com éssa consulta vai atualizar em vez de criar um duplicado
-        [consulta_id, nomeArquivo, nomeArquivo],
-      );
+      try {
+        await pool.query(
+          "INSERT INTO laudos (consulta_id, arquivo_pdf) VALUES (?, ?) ON DUPLICATE KEY UPDATE arquivo_pdf = ?", //se ja tiver um laudo com éssa consulta vai atualizar em vez de criar um duplicado
+          [consulta_id, nomeArquivo, nomeArquivo],
+        );
 
-      await registrarLog(req.usuario, "laudo_gerado", `consulta_id=${consulta_id}`);
+        await registrarLog(req.usuario, "laudo_gerado", `consulta_id=${consulta_id}`);
 
-      res.download(caminhoArquivo, nomeArquivo); //vai enviar o arquivo pdf com o dawload direto pro navegador
+        res.download(caminhoArquivo, nomeArquivo); //vai enviar o arquivo pdf com o dawload direto pro navegador
+      } catch (erro) {
+        // o catch de fora nao alcanca erros dentro do callback do stream, entao tratamos aqui
+        console.error("Erro ao registrar laudo:", erro);
+        if (!res.headersSent) {
+          res.status(500).json({ mensagem: "Erro interno do servidor." });
+        }
+      }
     });
   } catch (erro) {
     console.error("Erro ao gerar laudo:", erro);
@@ -117,11 +139,25 @@ const gerarLaudo = async (req, res) => {
 const buscarDadosLaudo = async (req, res) => {
   const { consulta_id } = req.params;
 
+  // os dados do laudo incluem score e encaminhamento, restritos a equipe clinica
+  if (req.usuario.perfil === "responsavel") {
+    return res.status(403).json({ mensagem: "Acesso restrito à equipe clínica." });
+  }
+
   try {
-    const [consulta] = await pool.query(
-      "SELECT * FROM vw_consulta_completa WHERE id = ?",
-      [consulta_id],
-    );
+    // mesma regra do pdf: medico ve apenas as consultas dele, admin/secretaria veem todas
+    let consulta;
+    if (req.usuario.perfil === "medico") {
+      [consulta] = await pool.query(
+        "SELECT * FROM vw_consulta_completa WHERE id = ? AND medico_id = ?",
+        [consulta_id, req.usuario.id],
+      );
+    } else {
+      [consulta] = await pool.query(
+        "SELECT * FROM vw_consulta_completa WHERE id = ?",
+        [consulta_id],
+      );
+    }
 
     if (consulta.length === 0) {
       return res.status(404).json({ mensagem: "Consulta não encontrada." });

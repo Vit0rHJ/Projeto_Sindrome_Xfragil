@@ -360,6 +360,8 @@ export default function Home() {
           ),
         )}
 
+        {/* o responsavel nao ve dados de encaminhamento (regra do requisito) */}
+        {user?.perfil !== "responsavel" && (
         <div
           style={{
             marginTop: 20,
@@ -381,7 +383,7 @@ export default function Home() {
               ).length,
             },
             {
-              label: "Medicação",
+              label: "Prioritário",
               val: consultas.filter((c) => c.encaminhamento === "medicacao")
                 .length,
             },
@@ -410,6 +412,7 @@ export default function Home() {
             </div>
           ))}
         </div>
+        )}
       </div>
     </div>
   );

@@ -350,6 +350,28 @@ export default function Checklist() {
   }
 
   if (resultado) {
+    // para o responsavel o backend nao devolve score nem encaminhamento,
+    // entao mostramos apenas uma confirmacao de envio
+    if (isResponsavel) {
+      return (
+        <div style={s.wrap}>
+          <div style={s.result}>
+            <div style={s.resultEye}>pré-checklist enviado</div>
+            <div style={s.resultTitle}>Respostas enviadas</div>
+            <div style={s.resultEnc}>
+              Obrigado! Suas respostas foram registradas com sucesso.
+              <br />
+              A equipe da clínica vai analisar e entrar em contato para os
+              próximos passos.
+            </div>
+            <button style={s.btnHome} onClick={() => navigate("/home")}>
+              Voltar ao início
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={s.wrap}>
         <div style={s.result}>

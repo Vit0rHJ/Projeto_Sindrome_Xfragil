@@ -5,36 +5,43 @@ const fs = require('fs');
 const path = require('path');
 
 const cadastrarMedico = async (req, res) => {
-  const { nome, email, senha, crm, especialidade } = req.body; // aqui vai peegar os dados que vieram da requisicao, a formatacao ta asssim pq tamo usando um negocio chamado desconstrucao que pega varias propriedades de um objeto de uma vez
+  const { nome, email, senha, crm, especialidade, perfil } = req.body; // aqui vai pegar os dados que vieram da requisicao, a formatacao ta assim pq tamo usando um negocio chamado desconstrucao que pega varias propriedades de um objeto de uma vez, agora tambem pegamos o perfil para saber se é medico ou secretaria
 
-  if (!nome || !email || !senha || !crm || !especialidade) {
-    // verifica se os campos obrigatorios foram enviados
-    return res
-      .status(400)
-      .json({ mensagem: "Todos os campos são obrigatórios." });
+  if (!nome || !email || !senha) {
+    // verifica se os campos obrigatorios foram enviados, crm e especialidade agora sao opcionais pois a secretaria nao precisa desses campos
+    return res.status(400).json({ mensagem: 'Nome, email e senha são obrigatórios.' });
   }
+
   try {
     const [existente] = await pool.query(
-      "SELECT * FROM usuarios WHERE email = ?",
-      [email], // antes dele realizar o cadastro vai verificar se ja existe alguem com esse gmail, podemos fazer éssa verificacao atraves so do id mesmo
+      'SELECT * FROM usuarios WHERE email = ?',
+      [email] // antes dele realizar o cadastro vai verificar se ja existe alguem com esse email, podemos fazer essa verificacao atraves so do id mesmo
     );
+
     if (existente.length > 0) {
       // se encontra ao menos um resultado é pq o email ja esta em uso
-      return res.status(409).json({ mensagem: "Email já cadastrado." });
+      return res.status(409).json({ mensagem: 'Email já cadastrado.' });
     }
+
     const senha_hash = await bcrypt.hash(senha, 10); // gera o hash da senha, o numero 10 é a quantidade de rounds de processamento do hash, quanto maior mais seguro, mas tambem mais demorado pra gerar, 10 é um valor comum e equilibrado pra isso
 
+    const perfilFinal = perfil === 'secretaria' ? 'secretaria' : 'medico'; // se o perfil enviado for secretaria usa secretaria, caso contrario usa medico como padrao, assim evitamos que alguem cadastre um admin pelo frontend
+
     await pool.query(
-      'INSERT INTO usuarios (nome, email, senha_hash, perfil, crm, especialidade) VALUES (?, ?, ?, "medico", ?, ?)', // insere o novo medico no banco de dados, o perfil do usuario vai ser sempre medico, por isso ta fixo no query, o id é auto increment entao nao precisa passar ele aqui, e a senha a gente passa o hash dela, pra nao salvar a senha em texto no banco de dados
-      [nome, email, senha_hash, crm, especialidade],
+      'INSERT INTO usuarios (nome, email, senha_hash, perfil, crm, especialidade) VALUES (?, ?, ?, ?, ?, ?)',
+      // insere o novo usuario no banco de dados, o perfil agora é dinamico, o id é auto increment entao nao precisa passar ele aqui, e a senha a gente passa o hash dela, pra nao salvar a senha em texto no banco de dados, crm e especialidade podem ser null para secretaria
+      [nome, email, senha_hash, perfilFinal, crm || null, especialidade || null]
     );
-    return res.status(201).json({ mensagem: "Médico cadastrado com sucesso." });
+
+    return res.status(201).json({
+      mensagem: `${perfilFinal === 'secretaria' ? 'Secretaria' : 'Médico'} cadastrado com sucesso.`
+    });
+
   } catch (erro) {
-    console.error("Erro no cadastro do médico:", erro);
-    return res.status(500).json({ mensagem: "Erro interno do servidor." });
+    console.error('Erro no cadastro:', erro);
+    return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
   }
 };
-
 const listarMedicos = async (req, res) => {
   // busca todos os usuarios com perfil medico, e devolve os dados basicos deles, sem a senha claro, pra que o admin possa ver a lista de medicos cadastrados no sistema, essa rota pode ser acessada por qualquer usuario logado, nao precisa ser admin, entao nao precisa do middleware de apenasAdmin, mas precisa do middleware de autenticar pra verificar se ta logado
   try {

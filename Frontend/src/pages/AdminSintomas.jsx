@@ -40,6 +40,35 @@ export default function AdminSintomas() {
   const [salvando, setSalvando] = useState(null);
   const [msg, setMsg] = useState("");
   const [erro, setErro] = useState("");
+  const [novo, setNovo] = useState({
+    nome: "",
+    categoria: "cognitivo_comportamental",
+    peso_masculino: "0.00",
+    peso_feminino: "0.00",
+  });
+  const [criando, setCriando] = useState(false);
+
+  async function criarSintoma(e) {
+    e.preventDefault();
+    setMsg("");
+    setErro("");
+    setCriando(true);
+    try {
+      await api.post("/sintomas", {
+        nome: novo.nome,
+        categoria: novo.categoria,
+        peso_masculino: Number(novo.peso_masculino),
+        peso_feminino: Number(novo.peso_feminino),
+      });
+      setMsg(`Sintoma "${novo.nome}" adicionado ao checklist.`);
+      setNovo({ nome: "", categoria: "cognitivo_comportamental", peso_masculino: "0.00", peso_feminino: "0.00" });
+      carregar();
+    } catch (err) {
+      setErro(err.response?.data?.mensagem || "Erro ao adicionar sintoma.");
+    } finally {
+      setCriando(false);
+    }
+  }
 
   useEffect(() => {
     carregar();
@@ -97,6 +126,67 @@ export default function AdminSintomas() {
 
       {msg && <div style={s.success}>{msg}</div>}
       {erro && <div style={s.error}>{erro}</div>}
+
+      <form
+        onSubmit={criarSintoma}
+        style={{
+          display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap",
+          border: "1px solid #e8e8e8", padding: "14px 16px", marginBottom: 22, maxWidth: 900,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 8, letterSpacing: 2, color: "#888", textTransform: "uppercase", marginBottom: 5 }}>Novo sintoma</div>
+          <input
+            style={{ ...s.inputPeso, width: 230, textAlign: "left" }}
+            placeholder="Nome do sintoma"
+            value={novo.nome}
+            onChange={(e) => setNovo({ ...novo, nome: e.target.value })}
+            required
+          />
+        </div>
+        <div>
+          <div style={{ fontSize: 8, letterSpacing: 2, color: "#888", textTransform: "uppercase", marginBottom: 5 }}>Categoria</div>
+          <select
+            style={{ ...s.inputPeso, width: 150, textAlign: "left" }}
+            value={novo.categoria}
+            onChange={(e) => setNovo({ ...novo, categoria: e.target.value })}
+          >
+            <option value="cognitivo_comportamental">Cognitivo</option>
+            <option value="fisico">Físico</option>
+          </select>
+        </div>
+        <div>
+          <div style={{ fontSize: 8, letterSpacing: 2, color: "#888", textTransform: "uppercase", marginBottom: 5 }}>Peso M</div>
+          <input
+            style={s.inputPeso}
+            type="number" min="0" max="1" step="0.01"
+            value={novo.peso_masculino}
+            onChange={(e) => setNovo({ ...novo, peso_masculino: e.target.value })}
+            required
+          />
+        </div>
+        <div>
+          <div style={{ fontSize: 8, letterSpacing: 2, color: "#888", textTransform: "uppercase", marginBottom: 5 }}>Peso F</div>
+          <input
+            style={s.inputPeso}
+            type="number" min="0" max="1" step="0.01"
+            value={novo.peso_feminino}
+            onChange={(e) => setNovo({ ...novo, peso_feminino: e.target.value })}
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={criando}
+          style={{ ...s.btnSalvar, padding: "8px 16px", background: "#1a6fff" }}
+        >
+          {criando ? "Adicionando..." : "+ Adicionar"}
+        </button>
+        <div style={{ fontSize: 9, color: "#aaa", flexBasis: "100%", lineHeight: 1.5 }}>
+          Ao adicionar, lembre-se de redistribuir os pesos dos demais sintomas
+          para a soma de cada sexo continuar fechando 1.00.
+        </div>
+      </form>
 
       {loading ? (
         <div style={{ fontSize: 12, color: "#aaa" }}>Carregando sintomas...</div>

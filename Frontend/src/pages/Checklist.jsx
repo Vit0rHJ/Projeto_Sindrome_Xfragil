@@ -418,7 +418,9 @@ export default function Checklist() {
           <div style={s.resultEye}>resultado do checklist</div>
           <div style={s.resultTitle}>Avaliação concluída</div>
           {!isResponsavel && (
-            <div style={s.resultScore}>{resultado.score_total}/12</div>
+            <div style={s.resultScore}>
+              {resultado.score_total}/{sintomas.length}
+            </div>
           )}
           {!isResponsavel && resultado.score_ponderado !== undefined && (
             <div style={s.ponderadoWrap}>

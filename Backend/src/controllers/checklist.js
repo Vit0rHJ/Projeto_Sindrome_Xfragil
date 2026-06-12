@@ -5,21 +5,6 @@ const { registrarLog } = require("../utils/auditoria");
 const LIMIAR_MASCULINO = 0.56;
 const LIMIAR_FEMININO = 0.55;
 
-const SINTOMAS_CODIGOS = [
-  "sin_atraso_fala",
-  "sin_dif_aprendizado",
-  "sin_deficit_atencao",
-  "sin_def_intelectual",
-  "sin_hiperatividade",
-  "sin_agressividade",
-  "sin_evita_contato_visual",
-  "sin_evita_contato_fisico",
-  "sin_movimentos_repetitivos",
-  "sin_frouxidao",
-  "sin_macroquidia",
-  "sin_face_alongada",
-];
-
 // calcula o score ponderado (0-1) a partir das respostas do checklist e dos
 // pesos cadastrados em sintomas_pesos, usando o peso de acordo com o sexo
 // do paciente. Também devolve o limiar clínico (RNF16) e o encaminhamento
@@ -49,23 +34,10 @@ function calcularScorePonderado(respostas, pesos, sexo) {
 
 const salvarChecklist = async (req, res) => {
   // o preenchido_por nao vem mais do body: o servidor deriva do perfil do
-  // token, entao ninguem consegue se passar por medico na requisicao
-  const {
-    consulta_id,
-    observacoes,
-    sin_atraso_fala,
-    sin_dif_aprendizado,
-    sin_deficit_atencao,
-    sin_def_intelectual,
-    sin_hiperatividade,
-    sin_agressividade,
-    sin_evita_contato_visual,
-    sin_evita_contato_fisico,
-    sin_movimentos_repetitivos,
-    sin_frouxidao,
-    sin_macroquidia,
-    sin_face_alongada,
-  } = req.body;
+  // token, entao ninguem consegue se passar por medico na requisicao.
+  // as respostas dos sintomas sao lidas dinamicamente a partir da tabela
+  // sintomas_pesos (o admin pode adicionar sintomas novos sem mexer aqui)
+  const { consulta_id, observacoes } = req.body;
 
   if (!consulta_id) {
     return res.status(400).json({ mensagem: "ID da consulta é obrigatório." });
@@ -133,58 +105,42 @@ const salvarChecklist = async (req, res) => {
     );
     const sexo = pacienteRows[0]?.sexo || null;
 
-    // busca os pesos configuráveis de cada sintoma (sem precisar mexer no código - RNF16)
-    const [pesos] = await pool.query(
-      "SELECT codigo, peso_masculino, peso_feminino FROM sintomas_pesos WHERE ativo = 1",
+    // busca TODOS os sintomas registrados (ativos pontuam; inativos sao
+    // gravados como 0 para manter as colunas consistentes) - RNF16
+    const [pesosTodos] = await pool.query(
+      "SELECT codigo, peso_masculino, peso_feminino, ativo FROM sintomas_pesos",
     );
 
-    const respostas = {
-      sin_atraso_fala: sin_atraso_fala || 0,
-      sin_dif_aprendizado: sin_dif_aprendizado || 0,
-      sin_deficit_atencao: sin_deficit_atencao || 0,
-      sin_def_intelectual: sin_def_intelectual || 0,
-      sin_hiperatividade: sin_hiperatividade || 0,
-      sin_agressividade: sin_agressividade || 0,
-      sin_evita_contato_visual: sin_evita_contato_visual || 0,
-      sin_evita_contato_fisico: sin_evita_contato_fisico || 0,
-      sin_movimentos_repetitivos: sin_movimentos_repetitivos || 0,
-      sin_frouxidao: sin_frouxidao || 0,
-      sin_macroquidia: sin_macroquidia || 0,
-      sin_face_alongada: sin_face_alongada || 0,
-    };
+    // os codigos viram nomes de coluna no SQL, entao filtramos por seguranca
+    // (eles ja nascem validados no cadastro de sintomas, isso é so garantia)
+    const sintomasValidos = pesosTodos.filter((p) =>
+      /^sin_[a-z0-9_]{2,45}$/.test(p.codigo),
+    );
+    const ativos = sintomasValidos.filter((p) => p.ativo);
+
+    // monta as respostas dinamicamente: 1 se o sintoma ativo foi marcado
+    const respostas = {};
+    for (const p of ativos) {
+      respostas[p.codigo] = req.body[p.codigo] ? 1 : 0;
+    }
 
     const { score_ponderado, limiar_usado, encaminhamento } = calcularScorePonderado(
       respostas,
-      pesos,
+      ativos,
       sexo,
     );
 
-    const valoresSintomas = [
-      respostas.sin_atraso_fala,
-      respostas.sin_dif_aprendizado,
-      respostas.sin_deficit_atencao,
-      respostas.sin_def_intelectual,
-      respostas.sin_hiperatividade,
-      respostas.sin_agressividade,
-      respostas.sin_evita_contato_visual,
-      respostas.sin_evita_contato_fisico,
-      respostas.sin_movimentos_repetitivos,
-      respostas.sin_frouxidao,
-      respostas.sin_macroquidia,
-      respostas.sin_face_alongada,
-    ];
+    const codigos = sintomasValidos.map((p) => p.codigo);
+    const colunasSql = codigos.map((c) => `\`${c}\``).join(", ");
+    const valoresSintomas = codigos.map((c) => respostas[c] ?? 0);
 
     if (substituiPre) {
       // o medico assume a avaliacao: sobrescreve as respostas do pré-checklist
       // (a trigger BEFORE UPDATE recalcula o score_total automaticamente)
+      const setSql = codigos.map((c) => `\`${c}\` = ?`).join(", ");
       await pool.query(
         `UPDATE checklist SET
-                preenchido_por = 'medico', observacoes = ?,
-                sin_atraso_fala = ?, sin_dif_aprendizado = ?, sin_deficit_atencao = ?,
-                sin_def_intelectual = ?, sin_hiperatividade = ?, sin_agressividade = ?,
-                sin_evita_contato_visual = ?, sin_evita_contato_fisico = ?,
-                sin_movimentos_repetitivos = ?, sin_frouxidao = ?,
-                sin_macroquidia = ?, sin_face_alongada = ?,
+                preenchido_por = 'medico', observacoes = ?, ${setSql},
                 score_ponderado = ?, limiar_usado = ?, encaminhamento = ?
             WHERE consulta_id = ?`,
         [
@@ -197,16 +153,12 @@ const salvarChecklist = async (req, res) => {
         ],
       );
     } else {
+      const placeholders = codigos.map(() => "?").join(", ");
       await pool.query(
         `INSERT INTO checklist (
-                consulta_id, preenchido_por, observacoes,
-                sin_atraso_fala, sin_dif_aprendizado, sin_deficit_atencao,
-                sin_def_intelectual, sin_hiperatividade, sin_agressividade,
-                sin_evita_contato_visual, sin_evita_contato_fisico,
-                sin_movimentos_repetitivos, sin_frouxidao,
-                sin_macroquidia, sin_face_alongada,
+                consulta_id, preenchido_por, observacoes, ${colunasSql},
                 score_ponderado, limiar_usado, encaminhamento
-            ) VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ${placeholders}, ?, ?, ?)`,
         [
           consulta_id,
           quemPreenche,

@@ -12,21 +12,8 @@ const ENCAMINHAMENTO_LABEL = {
   medicacao: "Encaminhamento Prioritário (avaliação genética recomendada)",
 };
 
-// rotulos dos 12 sintomas na ordem em que aparecem no pdf (2 colunas de 6)
-const SINTOMAS_PDF = [
-  ["sin_atraso_fala", "Atraso na fala"],
-  ["sin_dif_aprendizado", "Dificuldade de aprendizado"],
-  ["sin_deficit_atencao", "Déficit de atenção"],
-  ["sin_def_intelectual", "Deficiência intelectual"],
-  ["sin_hiperatividade", "Hiperatividade"],
-  ["sin_agressividade", "Agressividade"],
-  ["sin_evita_contato_visual", "Evita contato visual"],
-  ["sin_evita_contato_fisico", "Evita contato físico"],
-  ["sin_movimentos_repetitivos", "Movimentos repetitivos"],
-  ["sin_frouxidao", "Frouxidão ligamentar"],
-  ["sin_macroquidia", "Macroquidia"],
-  ["sin_face_alongada", "Face alongada"],
-];
+// a lista de sintomas do pdf vem da tabela sintomas_pesos (o admin pode
+// adicionar sintomas novos, entao nada aqui pode ser fixo)
 
 const gerarLaudo = async (req, res) => {
   const { consulta_id } = req.params;
@@ -75,6 +62,11 @@ const gerarLaudo = async (req, res) => {
           "Checklist não encontrado. Realize o checklist antes de gerar o laudo.",
       });
     }
+
+    // lista dinamica de sintomas para o corpo do pdf (2 colunas)
+    const [sintomasLista] = await pool.query(
+      "SELECT codigo, nome FROM sintomas_pesos ORDER BY categoria, id",
+    );
     //vai verificar se a pasta Laudos ta salva dentro do back, se éla nao existir, vai criar sozinha na primeira vez que essa parte for rodada
     const laudosDir = path.join(__dirname, "..", "laudos");
     if (!fs.existsSync(laudosDir)) {
@@ -207,7 +199,7 @@ const gerarLaudo = async (req, res) => {
       .font("Helvetica-Bold")
       .fontSize(20)
       .fillColor(PRETO)
-      .text(`${ch.score_total} / 12`, col1, y + 10);
+      .text(`${ch.score_total} / ${sintomasLista.length}`, col1, y + 10);
 
     doc
       .font("Helvetica")
@@ -272,10 +264,11 @@ const gerarLaudo = async (req, res) => {
     doc.moveTo(col1, y + 13).lineTo(562, y + 13).strokeColor(CINZA_CLARO).stroke();
     y += 22;
 
-    SINTOMAS_PDF.forEach(([colSint, label], i) => {
-      const x = i < 6 ? col1 : col2;
-      const yy = y + (i % 6) * 17;
-      const marcado = !!ch[colSint];
+    const metade = Math.ceil(sintomasLista.length / 2);
+    sintomasLista.forEach((sint, i) => {
+      const x = i < metade ? col1 : col2;
+      const yy = y + (i % metade) * 17;
+      const marcado = !!ch[sint.codigo];
       doc
         .rect(x, yy, 9, 9)
         .lineWidth(0.8)
@@ -288,9 +281,9 @@ const gerarLaudo = async (req, res) => {
         .font(marcado ? "Helvetica-Bold" : "Helvetica")
         .fontSize(9)
         .fillColor(marcado ? PRETO : CINZA)
-        .text(label, x + 16, yy + 0.5);
+        .text(sint.nome, x + 16, yy + 0.5, { width: 235, height: 12, ellipsis: true });
     });
-    y += 6 * 17 + 10;
+    y += metade * 17 + 10;
 
     // ---------- observações clínicas (se houver) ----------
     if (ch.observacoes) {

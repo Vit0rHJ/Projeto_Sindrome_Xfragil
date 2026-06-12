@@ -36,6 +36,8 @@ const encLabel = {
   medicacao: 'Encaminhamento Prioritário',
 }
 
+// lista padrao usada como fallback; a lista real vem da API (/sintomas),
+// porque o admin pode adicionar sintomas novos ao checklist
 const SINTOMAS_LABELS = [
   { id: 'sin_atraso_fala',            label: 'Atraso na fala' },
   { id: 'sin_dif_aprendizado',        label: 'Dif. aprendizado' },
@@ -61,8 +63,19 @@ export default function Laudo() {
   const { consulta_id } = useParams()
   const [dados, setDados] = useState(null)
   const [historico, setHistorico] = useState([])
+  const [sintomasLista, setSintomasLista] = useState(SINTOMAS_LABELS)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
+
+  useEffect(() => {
+    api.get('/sintomas')
+      .then(r => {
+        if (Array.isArray(r.data) && r.data.length > 0) {
+          setSintomasLista(r.data.map(x => ({ id: x.codigo, label: x.nome })))
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     api.get(`/laudos/${consulta_id}`)
@@ -205,7 +218,7 @@ export default function Laudo() {
         {checklist ? (
           <>
             <div style={{ textAlign: 'center', padding: '14px 0', borderBottom: '1px solid #141414' }}>
-              <div style={s.score}>{checklist.score_total}/12</div>
+              <div style={s.score}>{checklist.score_total}/{sintomasLista.length}</div>
               <div style={s.scoreLabel}>score total</div>
               {checklist.score_ponderado !== undefined && (
                 <div style={{ marginTop: 14 }}>
@@ -231,7 +244,7 @@ export default function Laudo() {
 
             <div style={{ marginTop: 14 }}>
               <div style={{ ...s.reye, marginBottom: 8 }}>sintomas marcados</div>
-              {SINTOMAS_LABELS.map(s2 => (
+              {sintomasLista.map(s2 => (
                 <div key={s2.id} style={s.sintRow}>
                   <span style={s.sintLabel}>{s2.label}</span>
                   <span style={{ fontSize: 10, color: checklist[s2.id] ? '#1a6fff' : '#555' }}>

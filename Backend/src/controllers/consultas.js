@@ -13,10 +13,26 @@ const criarConsulta = async (req, res) => {
   }
 
   try {
-    const [paciente] = await pool.query(
-      "SELECT id FROM pacientes WHERE id = ? AND medico_id = ?",
-      [paciente_id, req.usuario.id],
-    );
+    // admin e secretaria podem abrir consulta (reavaliacao) para qualquer
+    // paciente: nesse caso a consulta fica com o medico atual do paciente.
+    // medico/responsavel continuam restritos aos proprios pacientes.
+    let paciente;
+    let medicoDaConsulta = req.usuario.id;
+
+    if (req.usuario.perfil === "admin" || req.usuario.perfil === "secretaria") {
+      [paciente] = await pool.query(
+        "SELECT id, medico_id FROM pacientes WHERE id = ?",
+        [paciente_id],
+      );
+      if (paciente.length > 0 && paciente[0].medico_id) {
+        medicoDaConsulta = paciente[0].medico_id;
+      }
+    } else {
+      [paciente] = await pool.query(
+        "SELECT id FROM pacientes WHERE id = ? AND medico_id = ?",
+        [paciente_id, req.usuario.id],
+      );
+    }
 
     if (paciente.length === 0) {
       return res
@@ -26,7 +42,7 @@ const criarConsulta = async (req, res) => {
 
     const [resultado] = await pool.query(
       "INSERT INTO consultas (paciente_id, medico_id, data_consulta, observacoes) VALUES (?, ?, ?, ?)",
-      [paciente_id, req.usuario.id, data_consulta, observacoes],
+      [paciente_id, medicoDaConsulta, data_consulta, observacoes],
     );
 
     return res.status(201).json({

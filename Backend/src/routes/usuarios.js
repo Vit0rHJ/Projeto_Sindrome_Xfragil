@@ -5,10 +5,11 @@ const {
   listarMedicos,
   editarMedico,
   desativarMedico,
-  atualizarFotoMedico,
+  atualizarFotoUsuario,
   cadastrarSecretaria,
   listarSecretarias,
   desativarSecretaria,
+  meuPerfil,
 } = require("../controllers/usuarios"); // vao impoetar as duas  funcoes que montamos no controller
 const { autenticar, apenasAdmin, adminOuSecretaria } = require("../middlewares/auth"); //  vai importar os middlewares de autenticar e apenasAdmin pra proteger as rotas, so o admin pode cadastrar medico e listar os medicos, entao as duas rotas vao ter os dois middlewares, primeiro a gente verifica se ta logado e depois se é admin
 const upload = require("../utils/upload"); //o middleware do multer que processa um unico arquivo. foto é o nome do campo que o front vai usar para enviar a mensagem
@@ -17,11 +18,12 @@ router.post("/", autenticar, apenasAdmin, cadastrarMedico); //aqui temos tre arg
 router.get("/", autenticar, adminOuSecretaria, listarMedicos); // a secretaria tambem precisa da lista de medicos para direcionar os pacientes, entao a rota libera admin e secretaria
 router.put("/:id", autenticar, apenasAdmin, editarMedico); // aqui a gente tem uma rota de edicao de medico, o admin pode editar os dados do medico, entao a gente protege essa rota com os mesmos middlewares de autenticar e apenasAdmin, e a gente passa o id do medico que quer editar na url, entao a gente consegue identificar qual medico o admin quer editar
 router.patch("/:id/desativar", autenticar, apenasAdmin, desativarMedico); // aqui a gente tem uma rota pra desativar medico, o admin pode desativar um medico do sistema, entao a gente protege essa rota com os mesmos middlewares de autenticar e apenasAdmin, e a gente passa o id do medico que quer desativar na url, entao a gente consegue identificar qual medico o admin quer desativar
+router.get("/me", autenticar, meuPerfil); // dados do proprio usuario logado (foto da sidebar)
 router.patch(
   "/:id/foto",
   autenticar,
   upload.single("foto"),
-  atualizarFotoMedico,
+  atualizarFotoUsuario, // propria foto (qualquer perfil) ou admin trocando a de alguem
 );
 router.post("/secretaria", autenticar, apenasAdmin, cadastrarSecretaria); // so o admin pode cadastrar secretaria
 router.get("/secretarias", autenticar, apenasAdmin, listarSecretarias); // lista as secretarias ativas (tela admin/secretarias)

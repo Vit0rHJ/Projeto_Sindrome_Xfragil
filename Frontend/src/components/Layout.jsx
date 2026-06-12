@@ -1,7 +1,9 @@
 // o outlet é onde o o reactrouter vai renderizar a pagina atual, o layout (topbar + sidebar)é fixa e o outlet vai ser o espaço variavel onde cada pagina aparece
+import { useState, useEffect, useRef } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Borboleta } from "./simbuloBorboleta";
-import { getUser } from "../services/api";
+import api, { getUser } from "../services/api";
+import Avatar from "./Avatar";
 
 const s = {
   wrap: {
@@ -110,6 +112,33 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const user = getUser();
+  // o token nao carrega a foto, entao buscamos o proprio perfil na API
+  const [perfilFoto, setPerfilFoto] = useState(null);
+  const fotoRef = useRef(null);
+
+  useEffect(() => {
+    api
+      .get("/usuarios/me")
+      .then((r) => setPerfilFoto(r.data.foto))
+      .catch(() => {});
+  }, []);
+
+  // qualquer perfil (inclusive responsavel e secretaria) troca a propria
+  // foto clicando no avatar da sidebar
+  async function enviarMinhaFoto(e) {
+    const arquivo = e.target.files[0];
+    if (!arquivo) return;
+    const fd = new FormData();
+    fd.append("foto", arquivo);
+    try {
+      const { data } = await api.patch(`/usuarios/${user.id}/foto`, fd);
+      setPerfilFoto(data.foto);
+    } catch (err) {
+      alert(err.response?.data?.mensagem || "Erro ao enviar foto.");
+    } finally {
+      e.target.value = "";
+    }
+  }
 
   function logout() {
     localStorage.removeItem("token");
@@ -133,11 +162,8 @@ export default function Layout() {
       path: "/cadastro",
       perfis: ["admin", "medico", "responsavel"],
     },
-    {
-      label: "Checklist",
-      path: "/checklist",
-      perfis: ["admin", "medico", "responsavel"],
-    },
+    // o item "Checklist" saiu do menu: o checklist só faz sentido dentro do
+    // fluxo de uma consulta (cadastro -> checklist ou reavaliação pelo laudo)
     {
       label: "Laudos",
       path: "/laudos",
@@ -148,6 +174,7 @@ export default function Layout() {
   const adminItems = [
     { label: "Médicos", path: "/admin/medicos", perfis: ["admin"] },
     { label: "Secretárias", path: "/admin/secretarias", perfis: ["admin"] },
+    { label: "Sintomas", path: "/admin/sintomas", perfis: ["admin"] },
     {
       label: "Secretaria",
       path: "/secretaria",
@@ -219,8 +246,21 @@ export default function Layout() {
           )}
 
           <div style={s.sbot}>
+            <input
+              ref={fotoRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              style={{ display: "none" }}
+              onChange={enviarMinhaFoto}
+            />
             <div style={s.av}>
-              <div style={s.avc}>{user?.nome?.[0]?.toUpperCase()}</div>
+              <div
+                style={{ cursor: "pointer" }}
+                title="Clique para alterar sua foto"
+                onClick={() => fotoRef.current.click()}
+              >
+                <Avatar nome={user?.nome} foto={perfilFoto} size={30} />
+              </div>
               <div>
                 <div style={s.avn}>{user?.nome}</div>
                 <div style={s.avr}>{user?.perfil}</div>

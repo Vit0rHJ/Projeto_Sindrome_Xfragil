@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { getUser } from "../services/api";
+import Avatar from "../components/Avatar";
 
 const s = {
   wrap: { display: "flex", height: "calc(100vh - 62px)", overflow: "hidden" },
@@ -313,7 +314,7 @@ export default function Home() {
                   <tr key={c.id}>
                     <td style={s.td}>
                       <div style={s.av}>
-                        <div style={s.avc}>{c.paciente_nome?.[0]}</div>
+                        <Avatar nome={c.paciente_nome} foto={c.paciente_foto} />
                         {c.paciente_nome}
                       </div>
                     </td>

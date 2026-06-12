@@ -12,6 +12,7 @@ const listarPrechecklist = async (req, res) => {
                 ch.criado_em,
                 p.nome AS paciente_nome,
                 p.cpf AS paciente_cpf,
+                p.foto AS paciente_foto,
                 p.cidade,
                 p.estado,
                 c.status,

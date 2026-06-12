@@ -317,6 +317,33 @@ export default function Checklist() {
   // quando o checklist é salvo com sucesso , o backend retorna o score e encaminhamento, mostarndo uma tela de resultado em vez de forn=mulario
   const [resultado, setResultado] = useState(null);
   const [consulta, setConsulta] = useState(null);
+  // o formulario se monta a partir da tabela sintomas_pesos da API: sintoma
+  // desativado pelo admin some daqui sem mexer em codigo (RNF16). a lista
+  // fixa SINTOMAS fica como fallback e fonte das descricoes.
+  const [sintomas, setSintomas] = useState(SINTOMAS);
+
+  useEffect(() => {
+    const descPorCodigo = Object.fromEntries(SINTOMAS.map((x) => [x.id, x.desc]));
+    api
+      .get("/sintomas")
+      .then((r) => {
+        if (!Array.isArray(r.data) || r.data.length === 0) return;
+        setSintomas(
+          r.data
+            .filter((x) => x.ativo)
+            .map((x) => ({
+              id: x.codigo,
+              label: x.nome,
+              desc:
+                descPorCodigo[x.codigo] ||
+                (x.categoria === "fisico"
+                  ? "Sinal físico associado à síndrome"
+                  : "Sinal cognitivo-comportamental"),
+            })),
+        );
+      })
+      .catch(() => {});
+  }, []);
 
   // busca os dados da consulta para mostrar o nome do paciente no cabeçalho
   useEffect(() => {
@@ -350,7 +377,7 @@ export default function Checklist() {
         observacoes,
         preenchido_por: isResponsavel ? "responsavel" : "medico",
       };
-      SINTOMAS.forEach((s) => {
+      sintomas.forEach((s) => {
         body[s.id] = marcados[s.id] ? 1 : 0;
       });
       const { data } = await api.post("/checklist", body);
@@ -463,15 +490,15 @@ export default function Checklist() {
 
       <div style={s.progressTxt}>
         <span>
-          {total} de {SINTOMAS.length} sintomas marcados
+          {total} de {sintomas.length} sintomas marcados
         </span>
-        <span>{Math.round((total / SINTOMAS.length) * 100)}%</span>
+        <span>{Math.round((total / sintomas.length) * 100)}%</span>
       </div>
       <div style={s.progress}>
         <div
           style={{
             ...s.progressBar,
-            width: `${(total / SINTOMAS.length) * 100}%`,
+            width: `${(total / sintomas.length) * 100}%`,
           }}
         ></div>
       </div>
@@ -479,7 +506,7 @@ export default function Checklist() {
       {erro && <div style={s.error}>{erro}</div>}
 
       <div style={s.grid}>
-        {SINTOMAS.map((sint) => {
+        {sintomas.map((sint) => {
           const ativo = !!marcados[sint.id];
           return (
             <div

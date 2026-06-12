@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
+import Avatar from "../components/Avatar";
 
 const s = {
   wrap: { display: "flex", height: "calc(100vh - 62px)", overflow: "hidden" },
@@ -315,7 +316,7 @@ export default function Secretaria() {
                   <tr key={c.id}>
                     <td style={s.td}>
                       <div style={s.av}>
-                        <div style={s.avc}>{c.paciente_nome?.[0]}</div>
+                        <Avatar nome={c.paciente_nome} foto={c.paciente_foto} />
                         {c.paciente_nome}
                       </div>
                     </td>
@@ -412,11 +413,15 @@ export default function Secretaria() {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
+                gap: 8,
                 padding: "8px 0",
                 borderBottom: "1px solid #141414",
               }}
             >
-              <span style={{ fontSize: 10, color: "#666" }}>{m.nome}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Avatar nome={m.nome} foto={m.foto} size={22} />
+                <span style={{ fontSize: 10, color: "#666" }}>{m.nome}</span>
+              </div>
               <span style={{ fontSize: 9, color: "#334", letterSpacing: 1 }}>
                 {m.especialidade || "—"}
               </span>

@@ -160,7 +160,7 @@ const cadastrarSecretaria = async (req, res) => {
 const listarSecretarias = async (req, res) => {
   try {
     const [secretarias] = await pool.query(
-      'SELECT id, nome, email, criado_em FROM usuarios WHERE perfil = "secretaria" AND ativo = 1',
+      'SELECT id, nome, email, foto, criado_em FROM usuarios WHERE perfil = "secretaria" AND ativo = 1',
     );
 
     return res.status(200).json(secretarias);
@@ -194,25 +194,31 @@ const desativarSecretaria = async (req, res) => {
   }
 };
 
-const atualizarFotoMedico = async (req, res) => {
+const atualizarFotoUsuario = async (req, res) => {
     const { id } = req.params;
 
     if (!req.file) { // o req.file é onde o multer vai colocar os arquivos apos ele processar eles, se estiver vazio é pq  nenhum arquivo foi enviado
         return res.status(400).json({ mensagem: 'Nenhuma foto enviada.' });
     }
 
+    // qualquer perfil pode trocar a PROPRIA foto; o admin pode trocar a de qualquer um
+    // (antes a rota era restrita a medicos e, pior, qualquer logado podia trocar a foto de qualquer medico)
+    if (req.usuario.perfil !== 'admin' && Number(id) !== req.usuario.id) {
+        return res.status(403).json({ mensagem: 'Você só pode alterar a própria foto.' });
+    }
+
     try {
-        const [medico] = await pool.query(
-            'SELECT foto FROM usuarios WHERE id = ? AND perfil = "medico"',
+        const [usuario] = await pool.query(
+            'SELECT foto FROM usuarios WHERE id = ?',
             [id]
         );
 
-        if (medico.length === 0) {
-            return res.status(404).json({ mensagem: 'Médico não encontrado.' });
+        if (usuario.length === 0) {
+            return res.status(404).json({ mensagem: 'Usuário não encontrado.' });
         }
 
-        if (medico[0].foto) {
-            const caminhoAntigo = path.join(__dirname, '..', 'uploads', medico[0].foto);
+        if (usuario[0].foto) {
+            const caminhoAntigo = path.join(__dirname, '..', 'uploads', usuario[0].foto);
             if (fs.existsSync(caminhoAntigo)) {
                 fs.unlinkSync(caminhoAntigo);// o unlyncsync serve parea deletar o arquivo do disco
             }
@@ -233,13 +239,33 @@ const atualizarFotoMedico = async (req, res) => {
         return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
     }
 };
+// devolve os dados do proprio usuario logado (a sidebar usa para mostrar a foto)
+const meuPerfil = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT id, nome, email, perfil, foto FROM usuarios WHERE id = ?",
+      [req.usuario.id],
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ mensagem: "Usuário não encontrado." });
+    }
+
+    return res.status(200).json(rows[0]);
+  } catch (erro) {
+    console.error("Erro ao buscar perfil:", erro);
+    return res.status(500).json({ mensagem: "Erro interno do servidor." });
+  }
+};
+
 module.exports = {
   cadastrarMedico,
   listarMedicos,
   editarMedico,
   desativarMedico,
-  atualizarFotoMedico,
+  atualizarFotoUsuario,
   cadastrarSecretaria,
   listarSecretarias,
   desativarSecretaria,
+  meuPerfil,
 };

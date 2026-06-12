@@ -90,6 +90,29 @@ export default function Pacientes() {
     }
   }
 
+  const podeVerLaudo = user?.perfil !== "responsavel";
+
+  // clicar no paciente abre a situacao dele: o laudo da avaliacao mais
+  // recente (ou a consulta mais recente, se ainda nao houver avaliacao)
+  async function abrirSituacao(p) {
+    if (!podeVerLaudo) return;
+    try {
+      const { data } = await api.get("/consultas");
+      const doPaciente = data.filter((c) => c.paciente_id === p.id);
+      if (doPaciente.length === 0) {
+        alert("Este paciente ainda não possui consultas registradas.");
+        return;
+      }
+      const avaliadas = doPaciente.filter((c) => c.encaminhamento);
+      const alvo = (avaliadas.length > 0 ? avaliadas : doPaciente).sort(
+        (a, b) => b.id - a.id,
+      )[0];
+      navigate(`/laudo/${alvo.id}`);
+    } catch {
+      alert("Erro ao buscar as consultas do paciente.");
+    }
+  }
+
   // filtro instantâneo por nome ou cpf, sem precisar de nova requisição
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -176,7 +199,12 @@ export default function Pacientes() {
               filtrados.map((p) => {
                 const idade = calcularIdade(p.data_nascimento);
                 return (
-                  <tr key={p.id}>
+                  <tr
+                    key={p.id}
+                    style={podeVerLaudo ? { cursor: "pointer" } : undefined}
+                    title={podeVerLaudo ? "Ver laudo e situação do paciente" : undefined}
+                    onClick={() => abrirSituacao(p)}
+                  >
                     <td style={s.td}>
                       <div style={s.av}>
                         {p.foto ? (
@@ -203,7 +231,10 @@ export default function Pacientes() {
                     <td style={s.td}>{p.email || "—"}</td>
                     <td
                       style={{ ...s.td, color: "#1a6fff", cursor: "pointer", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}
-                      onClick={() => escolherFoto(p.id)}
+                      onClick={(e) => {
+                        e.stopPropagation(); // nao deixa o clique da foto abrir o laudo
+                        escolherFoto(p.id);
+                      }}
                     >
                       {p.foto ? "Trocar foto" : "+ Foto"}
                     </td>

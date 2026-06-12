@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import api from '../services/api'
+import Avatar from '../components/Avatar'
 
 const s = {
   wrap: { display: 'flex', height: 'calc(100vh - 62px)', overflow: 'hidden' },
@@ -78,6 +79,22 @@ export default function Laudo() {
       .catch(() => setHistorico([]))
   }, [dados])
 
+  // acompanhamento: cria uma nova consulta para o mesmo paciente e abre o
+  // checklist — a nova avaliacao entra no grafico de evolucao do score
+  async function novaAvaliacao() {
+    try {
+      const hoje = new Date().toISOString().split('T')[0]
+      const { data } = await api.post('/consultas', {
+        paciente_id: dados.paciente.id,
+        data_consulta: hoje,
+        observacoes: 'Reavaliação de acompanhamento',
+      })
+      navigate(`/checklist?consulta_id=${data.consulta_id}`)
+    } catch (err) {
+      alert(err.response?.data?.mensagem || 'Erro ao criar nova avaliação.')
+    }
+  }
+
   async function downloadPdf() {
     try {
       const response = await api.get(`/laudos/${consulta_id}/pdf`, {
@@ -109,6 +126,13 @@ export default function Laudo() {
         <div style={s.title}>Laudo Clínico</div>
 
         <div style={s.sectionTitle}>dados do paciente</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <Avatar nome={paciente?.nome} foto={paciente?.foto} size={44} />
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#0a0a0a' }}>{paciente?.nome || '—'}</div>
+            <div style={{ fontSize: 10, color: '#aaa' }}>{paciente?.sexo === 'F' ? 'Feminino' : paciente?.sexo === 'M' ? 'Masculino' : '—'}</div>
+          </div>
+        </div>
         <div style={s.row}><span style={s.rowLabel}>Nome</span><span style={s.rowVal}>{paciente?.nome || '—'}</span></div>
         <div style={s.row}><span style={s.rowLabel}>CPF</span><span style={s.rowVal}>{paciente?.cpf || '—'}</span></div>
         <div style={s.row}><span style={s.rowLabel}>Data de nascimento</span><span style={s.rowVal}>{formatDate(paciente?.data_nascimento)}</span></div>
@@ -116,7 +140,13 @@ export default function Laudo() {
         <div style={s.row}><span style={s.rowLabel}>Responsável</span><span style={s.rowVal}>{paciente?.nome_responsavel || '—'}</span></div>
 
         <div style={s.sectionTitle}>dados da consulta</div>
-        <div style={s.row}><span style={s.rowLabel}>Médico responsável</span><span style={s.rowVal}>{medico?.nome || '—'}</span></div>
+        <div style={s.row}>
+          <span style={s.rowLabel}>Médico responsável</span>
+          <span style={{ ...s.rowVal, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Avatar nome={medico?.nome} foto={medico?.foto} size={20} />
+            {medico?.nome || '—'}
+          </span>
+        </div>
         <div style={s.row}><span style={s.rowLabel}>CRM</span><span style={s.rowVal}>{medico?.crm || '—'}</span></div>
         <div style={s.row}><span style={s.rowLabel}>Especialidade</span><span style={s.rowVal}>{medico?.especialidade || '—'}</span></div>
         <div style={s.row}><span style={s.rowLabel}>Data da consulta</span><span style={s.rowVal}>{formatDate(consulta?.data_consulta)}</span></div>
@@ -156,6 +186,14 @@ export default function Laudo() {
           <button style={s.btnPdf} onClick={downloadPdf}>
             Baixar PDF
             <div style={s.btnBar}></div>
+          </button>
+          <button
+            style={{ ...s.btnPdf, background: '#1a6fff' }}
+            title="Cria uma nova consulta de acompanhamento e abre o checklist"
+            onClick={novaAvaliacao}
+          >
+            Nova Avaliação →
+            <div style={{ ...s.btnBar, background: '#0a0a0a' }}></div>
           </button>
         </div>
       </div>

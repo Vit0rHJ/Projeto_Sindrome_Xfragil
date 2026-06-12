@@ -152,7 +152,8 @@ POST   /api/usuarios                      cadastrar médico (admin)
 GET    /api/usuarios                      listar médicos ativos (admin/secretaria)
 PUT    /api/usuarios/:id                  editar médico (admin)
 PATCH  /api/usuarios/:id/desativar        desativar médico transferindo pacientes (admin)
-PATCH  /api/usuarios/:id/foto             atualizar foto (autenticado)
+PATCH  /api/usuarios/:id/foto             atualizar foto: a própria (qualquer perfil) ou qualquer uma (admin)
+GET    /api/usuarios/me                   dados do próprio usuário logado, incluindo foto
 POST   /api/usuarios/secretaria           cadastrar secretária (admin)
 GET    /api/usuarios/secretarias          listar secretárias ativas (admin)
 PATCH  /api/usuarios/:id/desativar-secretaria  desativar secretária (admin)
@@ -180,6 +181,9 @@ GET    /api/relatorios/csv                exportar csv das avaliações (admin/s
 GET    /api/relatorios/excel              exportar excel (.xlsx) das avaliações (admin/secretaria)
 GET    /api/relatorios/historico/:paciente_id  histórico de score do paciente (autenticado)
 GET    /api/relatorios/auditoria          trilha de auditoria, últimos 200 registros (admin)
+
+GET    /api/sintomas                      sintomas do checklist com pesos (form se monta a partir daqui)
+PUT    /api/sintomas/:id                  editar gravidade (pesos por sexo) e ativo/inativo (admin)
 
 
 TESTES POSTMAN:
@@ -223,8 +227,12 @@ PÁGINAS:
 - Laudo.jsx: exibição do laudo de uma consulta, com score total, score ponderado, limiar, encaminhamento, gráfico de evolução do score ponderado do paciente ao longo do tempo (quando há mais de uma avaliação) e botão para baixar o pdf.
 - Laudos.jsx: lista de consultas com laudo disponível.
 - Secretaria.jsx: fila de pré-checklists e direcionamento de pacientes para médicos.
-- AdminMedicos.jsx: cadastro/edição/desativação de médicos (com transferência de pacientes).
-- AdminSecretarias.jsx: cadastro e desativação de secretárias, em área própria separada dos médicos.
+- AdminMedicos.jsx: cadastro/edição/desativação de médicos (com transferência de pacientes) e foto.
+- AdminSecretarias.jsx: cadastro, desativação e foto de secretárias, em área própria separada dos médicos.
+- AdminSintomas.jsx: calibragem clínica (admin) — edita a gravidade (peso por sexo) de cada sintoma e ativa/desativa itens do checklist; mostra a soma dos pesos por sexo com alerta se não fechar 1.00. O formulário do checklist se monta a partir dessa tabela.
+
+ACOMPANHAMENTO DO PACIENTE (diferencial):
+clicar em um paciente na página Pacientes abre o laudo/situação da avaliação mais recente dele. No laudo, o botão "Nova Avaliação" cria uma nova consulta de acompanhamento e abre o checklist — cada reavaliação entra no gráfico de evolução do score ponderado, permitindo acompanhar o paciente ao longo do tempo. Fotos aparecem em todas as listas (Home, Pacientes, Laudos, Secretaria, Médicos, Secretárias) e cada usuário (qualquer perfil) troca a própria foto clicando no avatar da barra lateral.
 - Relatorios.jsx: painel administrativo com cards de totais, gráfico de pizza (distribuição de encaminhamentos), gráfico de linha (evolução mensal), gráfico de barras (score ponderado médio por sexo e avaliações por médico), exportação de csv e (admin) trilha de auditoria.
 
 ROTAS (App.jsx):

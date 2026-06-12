@@ -407,7 +407,7 @@ const buscarDadosLaudo = async (req, res) => {
     );
 
     const [medico] = await pool.query(
-      "SELECT id, nome, crm, especialidade FROM usuarios WHERE id = ?",
+      "SELECT id, nome, crm, especialidade, foto FROM usuarios WHERE id = ?",
       [consulta[0].medico_id],
     );
 

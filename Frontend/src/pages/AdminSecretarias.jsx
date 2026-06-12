@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import api from "../services/api";
+import Avatar from "../components/Avatar";
 
 const s = {
   wrap: { display: "flex", height: "calc(100vh - 62px)", overflow: "hidden" },
@@ -187,10 +188,34 @@ export default function AdminSecretarias() {
   const [erro, setErro] = useState("");
   const [loading, setLoading] = useState(false);
   const [desativando, setDesativando] = useState(null);
+  const fileRef = useRef(null);
+  const [fotoSecretariaId, setFotoSecretariaId] = useState(null);
 
   useEffect(() => {
     carregarSecretarias();
   }, []);
+
+  // abre o seletor de arquivo ja sabendo de qual secretaria é a foto
+  function escolherFoto(id) {
+    setFotoSecretariaId(id);
+    fileRef.current.click();
+  }
+
+  async function enviarFoto(e) {
+    const arquivo = e.target.files[0];
+    if (!arquivo || !fotoSecretariaId) return;
+    const fd = new FormData();
+    fd.append("foto", arquivo);
+    try {
+      await api.patch(`/usuarios/${fotoSecretariaId}/foto`, fd);
+      carregarSecretarias();
+    } catch (err) {
+      setErro(err.response?.data?.mensagem || "Erro ao enviar foto.");
+    } finally {
+      e.target.value = "";
+      setFotoSecretariaId(null);
+    }
+  }
 
   async function carregarSecretarias() {
     const { data } = await api.get("/usuarios/secretarias");
@@ -235,6 +260,13 @@ export default function AdminSecretarias() {
 
   return (
     <div style={s.wrap}>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/webp"
+        style={{ display: "none" }}
+        onChange={enviarFoto}
+      />
       <div style={s.left}>
         <div style={s.corner}></div>
         <div style={s.eye}>administração</div>
@@ -293,7 +325,7 @@ export default function AdminSecretarias() {
           secretarias.map((sec) => (
             <div key={sec.id} style={s.card}>
               <div style={s.cardTop}>
-                <div style={s.avc}>{sec.nome?.[0]?.toUpperCase()}</div>
+                <Avatar nome={sec.nome} foto={sec.foto} size={36} />
                 <div>
                   <div style={s.secNome}>{sec.nome}</div>
                   <div style={s.secInfo}>
@@ -301,16 +333,24 @@ export default function AdminSecretarias() {
                   </div>
                 </div>
               </div>
-              <button
-                style={s.btnDeact}
-                onClick={() => {
-                  setDesativando(sec);
-                  setErro("");
-                  setMsg("");
-                }}
-              >
-                Desativar
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  style={{ ...s.btnDeact, border: "1px solid #0a0a0a", color: "#0a0a0a" }}
+                  onClick={() => escolherFoto(sec.id)}
+                >
+                  {sec.foto ? "Trocar Foto" : "+ Foto"}
+                </button>
+                <button
+                  style={s.btnDeact}
+                  onClick={() => {
+                    setDesativando(sec);
+                    setErro("");
+                    setMsg("");
+                  }}
+                >
+                  Desativar
+                </button>
+              </div>
               <div style={s.cardBar}></div>
             </div>
           ))

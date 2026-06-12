@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
+import Avatar from '../components/Avatar'
 
 const s = {
   wrap: { padding: '28px 32px', overflow: 'auto', height: 'calc(100vh - 62px)', background: '#fff' },
@@ -67,7 +68,7 @@ export default function Laudos() {
                 <tr key={c.id}>
                   <td style={s.td}>
                     <div style={s.av}>
-                      <div style={s.avc}>{c.paciente_nome?.[0]}</div>
+                      <Avatar nome={c.paciente_nome} foto={c.paciente_foto} />
                       {c.paciente_nome}
                     </div>
                   </td>

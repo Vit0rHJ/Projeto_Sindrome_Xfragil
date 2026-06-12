@@ -1,9 +1,17 @@
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+
+// o multer NAO cria a pasta de destino sozinho: sem isso o primeiro upload
+// em uma instalacao nova falharia com ENOENT
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 const storage = multer.diskStorage({ // define onde e como salvar o arquivo
     destination: (req, file, cb) => {// o destination apaonta para a pasta destination e o filename gera um nome unico utilizando o timestamp atual evitando conflito de nomes
-        cb(null, path.join(__dirname, '..', 'uploads'));
+        cb(null, uploadsDir);
     },
     filename: (req, file, cb) => {
         const extensao = path.extname(file.originalname);

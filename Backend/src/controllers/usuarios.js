@@ -46,7 +46,7 @@ const listarMedicos = async (req, res) => {
   // busca todos os usuarios com perfil medico, e devolve os dados basicos deles, sem a senha claro, pra que o admin possa ver a lista de medicos cadastrados no sistema, essa rota pode ser acessada por qualquer usuario logado, nao precisa ser admin, entao nao precisa do middleware de apenasAdmin, mas precisa do middleware de autenticar pra verificar se ta logado
   try {
     const [medicos] = await pool.query(
-      'SELECT id, nome, email, crm, especialidade, criado_em FROM usuarios WHERE perfil = "medico" AND ativo = 1',
+      'SELECT id, nome, email, crm, especialidade, foto, criado_em FROM usuarios WHERE perfil = "medico" AND ativo = 1',
     );
 
     return res.status(200).json(medicos);

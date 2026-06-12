@@ -1,27 +1,20 @@
-<<<<<<< HEAD
-node_modules
-=======
-### AL ###
-#Template for AL projects for Dynamics 365 Business Central
-#launch.json folder
+# dependencias
+node_modules/
+
+# variaveis de ambiente (senhas e segredos) — NUNCA commitar
+.env
+*.env
+
+# arquivos gerados em tempo de execucao com dados de pacientes (LGPD)
+Backend/src/uploads/
+Backend/src/laudos/
+
+# build do frontend
+Frontend/dist/
+
+# configuracao local de ferramentas
+.claude/
 .vscode/
-#Cache folder
-.alcache/
-#Symbols folder
-.alpackages/
-#Snapshots folder
-.snapshots/
-#Testing Output folder
-.output/
-#Extension App-file
-*.app
-#Rapid Application Development File
-rad.json
-#Translation Base-file
-*.g.xlf
-#License-files
-*.bclicense
-*.flf
-#Test results file
-TestResults.xml
->>>>>>> 79de3658721013d9455ab3dc58754ff3cfb12cfb
+
+# logs
+*.log

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import api from "../services/api";
+import { useState, useEffect, useRef } from "react";
+import api, { UPLOADS_URL } from "../services/api";
 
 const s = {
   wrap: { display: "flex", height: "calc(100vh - 62px)", overflow: "hidden" },
@@ -203,6 +203,30 @@ export default function AdminMedicos() {
   const [editando, setEditando] = useState(null); // aguarda o medico que esta sendo editado, quando clicarmos em editar, vai abrir o modal preenchido com os dados dele
   const [desativando, setDesativando] = useState(null); // aguarda o medico que vai ser desativado, o modal vai pedir para selecionar o medico que vai assumir os pacientes
   const [novoMedicoId, setNovoMedicoId] = useState("");
+  const fileRef = useRef(null);
+  const [fotoMedicoId, setFotoMedicoId] = useState(null);
+
+  // abre o seletor de arquivo ja sabendo de qual medico é a foto
+  function escolherFoto(id) {
+    setFotoMedicoId(id);
+    fileRef.current.click();
+  }
+
+  async function enviarFoto(e) {
+    const arquivo = e.target.files[0];
+    if (!arquivo || !fotoMedicoId) return;
+    const fd = new FormData();
+    fd.append("foto", arquivo);
+    try {
+      await api.patch(`/usuarios/${fotoMedicoId}/foto`, fd);
+      carregarMedicos();
+    } catch (err) {
+      setErro(err.response?.data?.mensagem || "Erro ao enviar foto.");
+    } finally {
+      e.target.value = "";
+      setFotoMedicoId(null);
+    }
+  }
 
   useEffect(() => {
     carregarMedicos();
@@ -279,6 +303,13 @@ export default function AdminMedicos() {
 
   return (
     <div style={s.wrap}>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/webp"
+        style={{ display: "none" }}
+        onChange={enviarFoto}
+      />
       <div style={s.left}>
         <div style={s.corner}></div>
         <div style={s.eye}>administração</div>
@@ -349,7 +380,15 @@ export default function AdminMedicos() {
         {medicos.map((m) => (
           <div key={m.id} style={s.card}>
             <div style={s.cardTop}>
-              <div style={s.avc}>{m.nome?.[0]?.toUpperCase()}</div>
+              {m.foto ? (
+                <img
+                  src={`${UPLOADS_URL}/${m.foto}`}
+                  alt={m.nome}
+                  style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", border: "1px solid #1a6fff", flexShrink: 0 }}
+                />
+              ) : (
+                <div style={s.avc}>{m.nome?.[0]?.toUpperCase()}</div>
+              )}
               <div>
                 <div style={s.medNome}>{m.nome}</div>
                 <div style={s.medInfo}>
@@ -360,6 +399,9 @@ export default function AdminMedicos() {
             <div style={s.actions}>
               <button style={s.btnEdit} onClick={() => setEditando({ ...m })}>
                 Editar
+              </button>
+              <button style={s.btnEdit} onClick={() => escolherFoto(m.id)}>
+                {m.foto ? "Trocar Foto" : "+ Foto"}
               </button>
               <button
                 style={s.btnDeact}

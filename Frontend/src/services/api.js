@@ -5,6 +5,9 @@ const api = axios.create({
   baseURL: 'http://localhost:3001/api',
 })
 
+// base das imagens servidas pelo backend (fotos de pacientes e medicos)
+export const UPLOADS_URL = 'http://localhost:3001/uploads'
+
 api.interceptors.request.use((config) => { //  toda requisicao que sair pelo axios vai passar aqui antes, ele vai pegar o token salvo no localstorage e  coloca altomaticamente mo cabecalho, ent nao vamos ter q fazer isso manualmente
   const token = localStorage.getItem('token')
   if (token) config.headers.Authorization = `Bearer ${token}`

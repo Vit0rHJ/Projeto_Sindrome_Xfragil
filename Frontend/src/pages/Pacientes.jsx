@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import api, { getUser } from "../services/api";
+import api, { getUser, UPLOADS_URL } from "../services/api";
 
 const s = {
   wrap: { padding: "28px 32px", overflow: "auto", height: "calc(100vh - 62px)", background: "#fff" },
@@ -54,13 +54,41 @@ export default function Pacientes() {
   const [pacientes, setPacientes] = useState([]);
   const [busca, setBusca] = useState("");
   const [loading, setLoading] = useState(true);
+  const fileRef = useRef(null);
+  const [fotoPacienteId, setFotoPacienteId] = useState(null);
 
   useEffect(() => {
+    carregar();
+  }, []);
+
+  function carregar() {
     api
       .get("/pacientes")
       .then((r) => setPacientes(r.data))
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  // abre o seletor de arquivo ja sabendo de qual paciente é a foto
+  function escolherFoto(id) {
+    setFotoPacienteId(id);
+    fileRef.current.click();
+  }
+
+  async function enviarFoto(e) {
+    const arquivo = e.target.files[0];
+    if (!arquivo || !fotoPacienteId) return;
+    const fd = new FormData();
+    fd.append("foto", arquivo);
+    try {
+      await api.patch(`/pacientes/${fotoPacienteId}/foto`, fd);
+      carregar();
+    } catch (err) {
+      alert(err.response?.data?.mensagem || "Erro ao enviar foto.");
+    } finally {
+      e.target.value = "";
+      setFotoPacienteId(null);
+    }
+  }
 
   // filtro instantâneo por nome ou cpf, sem precisar de nova requisição
   const filtrados = useMemo(() => {
@@ -80,6 +108,13 @@ export default function Pacientes() {
 
   return (
     <div style={s.wrap}>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/webp"
+        style={{ display: "none" }}
+        onChange={enviarFoto}
+      />
       <div style={s.eye}>gestão de pacientes</div>
       <div style={s.title}>Pacientes</div>
       <div style={s.sub}>
@@ -125,12 +160,13 @@ export default function Pacientes() {
               <th style={s.th}>Cidade / UF</th>
               <th style={s.th}>Telefone</th>
               <th style={s.th}>E-mail</th>
+              <th style={s.th}></th>
             </tr>
           </thead>
           <tbody>
             {filtrados.length === 0 ? (
               <tr>
-                <td style={{ ...s.td, color: "#bbb", fontStyle: "italic" }} colSpan={6}>
+                <td style={{ ...s.td, color: "#bbb", fontStyle: "italic" }} colSpan={7}>
                   {busca
                     ? `Nenhum paciente encontrado para "${busca}"`
                     : "Nenhum paciente cadastrado"}
@@ -143,7 +179,15 @@ export default function Pacientes() {
                   <tr key={p.id}>
                     <td style={s.td}>
                       <div style={s.av}>
-                        <div style={s.avc}>{p.nome?.[0]?.toUpperCase()}</div>
+                        {p.foto ? (
+                          <img
+                            src={`${UPLOADS_URL}/${p.foto}`}
+                            alt={p.nome}
+                            style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover", border: "1px solid #1a6fff", flexShrink: 0 }}
+                          />
+                        ) : (
+                          <div style={s.avc}>{p.nome?.[0]?.toUpperCase()}</div>
+                        )}
                         {p.nome}
                         {idade !== null && (
                           <span style={s.idade}>{idade} anos</span>
@@ -157,6 +201,12 @@ export default function Pacientes() {
                     </td>
                     <td style={s.td}>{p.telefone || "—"}</td>
                     <td style={s.td}>{p.email || "—"}</td>
+                    <td
+                      style={{ ...s.td, color: "#1a6fff", cursor: "pointer", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}
+                      onClick={() => escolherFoto(p.id)}
+                    >
+                      {p.foto ? "Trocar foto" : "+ Foto"}
+                    </td>
                   </tr>
                 );
               })

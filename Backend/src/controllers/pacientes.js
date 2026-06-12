@@ -1,6 +1,12 @@
 const pool = require("../config/db");
 const fs = require('fs');
 const path = require('path');
+
+// formatos exigidos pelo sistema (RNF de qualidade de dados):
+// cpf no padrao 000.000.000-00 e celular brasileiro +55 (DD) 9XXXX-XXXX
+const CPF_REGEX = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
+const CELULAR_REGEX = /^\+55 \(\d{2}\) 9\d{4}-\d{4}$/;
+
 const cadastrarPaciente = async (req, res) => {
     const { 
         nome, cpf, data_nascimento, sexo, nome_mae, nome_pai,
@@ -13,6 +19,24 @@ const cadastrarPaciente = async (req, res) => {
 
     if (!nome || !cpf || !nome_responsavel || !cpf_responsavel || !telefone_responsavel) {
         return res.status(400).json({ mensagem: 'Nome, CPF e dados do responsável são obrigatórios.' });
+    }
+
+    // validacao de formato no servidor (o front tem mascara, mas a API nao
+    // pode confiar no cliente)
+    if (!CPF_REGEX.test(cpf)) {
+        return res.status(400).json({ mensagem: 'CPF do paciente deve estar no formato 000.000.000-00.' });
+    }
+    if (!CPF_REGEX.test(cpf_responsavel)) {
+        return res.status(400).json({ mensagem: 'CPF do responsável deve estar no formato 000.000.000-00.' });
+    }
+    if (!CELULAR_REGEX.test(telefone_responsavel)) {
+        return res.status(400).json({ mensagem: 'Telefone do responsável deve ser um celular no formato +55 (DD) 9XXXX-XXXX.' });
+    }
+    // telefones opcionais: se vierem preenchidos, tambem precisam estar no padrao
+    for (const [campo, valor] of [['telefone', telefone], ['whatsapp', whatsapp], ['telefone2', telefone2]]) {
+        if (valor && !CELULAR_REGEX.test(valor)) {
+            return res.status(400).json({ mensagem: `O campo ${campo} deve ser um celular no formato +55 (DD) 9XXXX-XXXX.` });
+        }
     }
 
     try {
@@ -65,18 +89,18 @@ const listarPacientes = async (req, res) => {
 
         if (req.usuario.perfil === 'admin' || req.usuario.perfil === 'secretaria') { // vai verificar se o perfil esta dentro do token, se for o token de admin ou secretaria vai buscar todos os pacientes, se for o token do medico vai filtrar so os dele
             [pacientes] = await pool.query(
-                'SELECT id, nome, cpf, email, telefone, data_nascimento, cidade, estado FROM pacientes'
+                'SELECT id, nome, cpf, email, telefone, data_nascimento, cidade, estado, foto FROM pacientes'
             );
         } else if (req.usuario.perfil === 'responsavel') {
             // o responsavel ve os pacientes que ele mesmo cadastrou, mesmo depois
             // que a secretaria direcionar para um medico (o medico_id muda, o responsavel_id nao)
             [pacientes] = await pool.query(
-                'SELECT id, nome, cpf, email, telefone, data_nascimento, cidade, estado FROM pacientes WHERE responsavel_id = ? OR medico_id = ?',
+                'SELECT id, nome, cpf, email, telefone, data_nascimento, cidade, estado, foto FROM pacientes WHERE responsavel_id = ? OR medico_id = ?',
                 [req.usuario.id, req.usuario.id]
             );
         } else {
             [pacientes] = await pool.query(
-                'SELECT id, nome, cpf, email, telefone, data_nascimento, cidade, estado FROM pacientes WHERE medico_id = ?',
+                'SELECT id, nome, cpf, email, telefone, data_nascimento, cidade, estado, foto FROM pacientes WHERE medico_id = ?',
                 [req.usuario.id] // quando um medico cadastrar um pacienete, o id do medico vai ser salvo junto com os dados do paciente, entao quando o medico for listar os pacientes, a gente faz uma query buscando so os pacientes que tem o id do medico igual ao id do medico logado, assim cada medico so ve os pacientes dele, e nao os pacientes dos outros medicos, basicamente automaticamente  vinculamos o paciente  ao medico logado sem necessidade dele informar o proprio id
             );
         }
@@ -94,7 +118,7 @@ const buscarPorCpf = async (req, res) => {
 
     try {
         const [paciente] = await pool.query(
-            'SELECT id, nome, cpf, email, telefone, data_nascimento, cidade, estado FROM pacientes WHERE cpf = ?',// vai buscar o paciente pelo cpf
+            'SELECT id, nome, cpf, email, telefone, data_nascimento, cidade, estado, foto FROM pacientes WHERE cpf = ?',// vai buscar o paciente pelo cpf
             [cpf]
         );
 

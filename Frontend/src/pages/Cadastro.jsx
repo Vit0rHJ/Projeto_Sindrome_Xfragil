@@ -1,7 +1,8 @@
 // Fluxo de cadastro — ao submeter, primeiro cria o paciente e pega o id retornado. Depois usa esse id para criar a consulta e pega o consulta_id. Por fim redireciona direto para o checklist com o consulta_id na URL.
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
+import { maskCpf, maskTelefone, validarCpf, validarTelefone } from '../utils/formatos'
 
 const s = {
   wrap: { padding: '28px 32px', overflow: 'auto', height: 'calc(100vh - 62px)', background: '#fff' },
@@ -56,16 +57,53 @@ export default function Cadastro() {
     historico_familiar_di: 'nao', historico_menopausa: 'nao', historico_ataxia: 'nao',
   })
 
+  const [foto, setFoto] = useState(null)
+  const fotoRef = useRef(null)
+
   function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    let v = value
+    // mascaras aplicadas enquanto digita (cpf 000.000.000-00, celular +55)
+    if (name === 'cpf' || name === 'cpf_responsavel') v = maskCpf(value)
+    if (name === 'telefone' || name === 'telefone_responsavel') v = maskTelefone(value)
+    setForm({ ...form, [name]: v })
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
     setErro('')
+
+    // validacao de formato antes de enviar (o backend valida de novo)
+    if (!validarCpf(form.cpf)) {
+      setErro('CPF do paciente inválido. Use o formato 000.000.000-00.')
+      return
+    }
+    if (!validarCpf(form.cpf_responsavel)) {
+      setErro('CPF do responsável inválido. Use o formato 000.000.000-00.')
+      return
+    }
+    if (!validarTelefone(form.telefone_responsavel)) {
+      setErro('Telefone do responsável inválido. Use um celular no formato +55 (DD) 9XXXX-XXXX (começa com 9).')
+      return
+    }
+    if (form.telefone && !validarTelefone(form.telefone)) {
+      setErro('Telefone do paciente inválido. Use um celular no formato +55 (DD) 9XXXX-XXXX (começa com 9).')
+      return
+    }
+
     setLoading(true)
     try {
       const { data: pacData } = await api.post('/pacientes', form)
+      // se o usuario escolheu uma foto, envia logo apos criar o paciente
+      if (foto) {
+        const fd = new FormData()
+        fd.append('foto', foto)
+        try {
+          await api.patch(`/pacientes/${pacData.id}/foto`, fd)
+        } catch {
+          // foto é opcional: se falhar, segue o fluxo sem travar o cadastro
+        }
+      }
       const dataConsulta = new Date().toISOString().split('T')[0]
       const { data: consData } = await api.post('/consultas', {
         paciente_id: pacData.id,
@@ -104,6 +142,42 @@ export default function Cadastro() {
         <Field name="nome_pai" label="Nome do pai" form={form} onChange={handleChange} />
         <Field name="cidade"   label="Cidade" form={form} onChange={handleChange} />
         <Field name="estado"   label="Estado" form={form} onChange={handleChange} />
+
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Foto do paciente (opcional)</label>
+          <input
+            ref={fotoRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            style={{ display: 'none' }}
+            onChange={(e) => setFoto(e.target.files[0] || null)}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {foto && (
+              <img
+                src={URL.createObjectURL(foto)}
+                alt="Pré-visualização"
+                style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', border: '1px solid #1a6fff' }}
+              />
+            )}
+            <button
+              type="button"
+              style={{ ...inputStyle, width: 'auto', cursor: 'pointer', textAlign: 'left', color: foto ? '#0a0a0a' : '#999' }}
+              onClick={() => fotoRef.current.click()}
+            >
+              {foto ? foto.name : 'Escolher imagem...'}
+            </button>
+            {foto && (
+              <button
+                type="button"
+                style={{ background: 'none', border: 'none', color: '#cc0000', fontSize: 11, cursor: 'pointer' }}
+                onClick={() => { setFoto(null); fotoRef.current.value = '' }}
+              >
+                remover
+              </button>
+            )}
+          </div>
+        </div>
 
         <div style={s.sectionTitle}><div style={s.sectionDot}></div>Dados do Responsável</div>
         <Field name="nome_responsavel"     label="Nome do responsável"     required form={form} onChange={handleChange} />

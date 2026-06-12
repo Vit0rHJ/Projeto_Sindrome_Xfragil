@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   relatorioAgregado,
   exportarCsv,
+  exportarExcel,
   historicoPaciente,
   listarAuditoria,
 } = require("../controllers/relatorios");
@@ -10,6 +11,7 @@ const { autenticar, adminOuSecretaria, apenasAdmin, equipeClinica } = require(".
 
 router.get("/agregado", autenticar, adminOuSecretaria, relatorioAgregado);
 router.get("/csv", autenticar, adminOuSecretaria, exportarCsv);
+router.get("/excel", autenticar, adminOuSecretaria, exportarExcel);
 router.get("/historico/:paciente_id", autenticar, equipeClinica, historicoPaciente);
 router.get("/auditoria", autenticar, apenasAdmin, listarAuditoria);
 

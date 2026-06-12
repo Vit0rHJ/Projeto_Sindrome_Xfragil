@@ -67,18 +67,24 @@ export default function Relatorios() {
       .finally(() => setLoading(false));
   }, [isAdmin]);
 
-  async function exportarCsv() {
+  // exporta em excel (padrao, abre direto na planilha) ou csv (RF18)
+  async function exportar(formato) {
     try {
-      const response = await api.get("/relatorios/csv", { responseType: "blob" });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const response = await api.get(`/relatorios/${formato}`, { responseType: "blob" });
+      const tipos = {
+        excel: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        csv: "text/csv;charset=utf-8",
+      };
+      const nomeArquivo = formato === "excel" ? "relatorio_avaliacoes.xlsx" : "relatorio_avaliacoes.csv";
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: tipos[formato] }));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", "relatorio_avaliacoes.csv");
+      link.setAttribute("download", nomeArquivo);
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch {
-      alert("Erro ao exportar CSV.");
+      alert("Erro ao exportar relatório.");
     }
   }
 
@@ -99,10 +105,23 @@ export default function Relatorios() {
           <div style={s.title}>Relatórios</div>
           <div style={s.sub}>Visão agregada das avaliações realizadas no sistema</div>
         </div>
-        <button style={s.btnCsv} onClick={exportarCsv}>
-          Exportar CSV
-          <div style={s.btnBar}></div>
-        </button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button style={s.btnCsv} onClick={() => exportar("excel")}>
+            Exportar Excel
+            <div style={s.btnBar}></div>
+          </button>
+          <button
+            style={{
+              fontSize: 9, letterSpacing: 2, padding: "10px 14px", cursor: "pointer",
+              border: "1px solid #e0e0e0", color: "#888", background: "#fff",
+              textTransform: "uppercase", fontFamily: "'Space Grotesk', sans-serif",
+            }}
+            onClick={() => exportar("csv")}
+            title="Exportar em CSV (separado por ponto e vírgula)"
+          >
+            CSV
+          </button>
+        </div>
       </div>
 
       <div style={s.statsGrid}>

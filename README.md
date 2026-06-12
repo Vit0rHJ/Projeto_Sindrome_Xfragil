@@ -177,6 +177,7 @@ POST   /api/secretaria/direcionar         direcionar paciente para médico (admi
 
 GET    /api/relatorios/agregado           estatísticas agregadas (admin/secretaria)
 GET    /api/relatorios/csv                exportar csv das avaliações (admin/secretaria)
+GET    /api/relatorios/excel              exportar excel (.xlsx) das avaliações (admin/secretaria)
 GET    /api/relatorios/historico/:paciente_id  histórico de score do paciente (autenticado)
 GET    /api/relatorios/auditoria          trilha de auditoria, últimos 200 registros (admin)
 

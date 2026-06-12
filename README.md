@@ -121,7 +121,9 @@ CONTROLLERS/CONSULTAS.JS:
 gestão de consultas. funcionalidades prontas e testadas: criar consulta vinculando médico e paciente, listar consultas por perfil (admin e secretaria veem todas, médico vê apenas as suas), e atualizar status (pendente, realizada, cancelada).
 
 CONTROLLERS/CHECKLIST.JS:
-salva os 12 sintomas da avaliação clínica. funcionalidades prontas e testadas: salvar checklist (aceita médico e responsável), score_total calculado automaticamente pelo trigger do banco, score_ponderado/limiar_usado/encaminhamento calculados pelo backend com base no sexo do paciente e nos pesos da tabela sintomas_pesos, campo de observações disponível. cada consulta só pode ter um checklist. salvar um checklist gera um registro na trilha de auditoria.
+salva os 12 sintomas da avaliação clínica. funcionalidades prontas e testadas: salvar checklist (aceita médico e responsável), score_total calculado automaticamente pelo trigger do banco, score_ponderado/limiar_usado/encaminhamento calculados pelo backend com base no sexo do paciente e nos pesos da tabela sintomas_pesos, campo de observações disponível. salvar um checklist gera um registro na trilha de auditoria.
+
+regra do fluxo clínico: o pré-checklist do responsável serve apenas de triagem para a secretaria direcionar o paciente. quando o médico faz a avaliação oficial da mesma consulta, ela SUBSTITUI o pré-checklist (é o registro que vale para o laudo). ninguém refaz a própria avaliação: responsável envia 1x, médico avalia 1x. o preenchido_por é derivado do perfil do token no servidor, não do body da requisição.
 
 os 12 sintomas (nomes exatos das colunas do banco): sin_atraso_fala, sin_dif_aprendizado, sin_deficit_atencao, sin_def_intelectual, sin_hiperatividade, sin_agressividade, sin_evita_contato_visual, sin_evita_contato_fisico, sin_movimentos_repetitivos, sin_frouxidao, sin_macroquidia, sin_face_alongada.
 

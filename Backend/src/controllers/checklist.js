@@ -48,9 +48,10 @@ function calcularScorePonderado(respostas, pesos, sexo) {
 }
 
 const salvarChecklist = async (req, res) => {
+  // o preenchido_por nao vem mais do body: o servidor deriva do perfil do
+  // token, entao ninguem consegue se passar por medico na requisicao
   const {
     consulta_id,
-    preenchido_por,
     observacoes,
     sin_atraso_fala,
     sin_dif_aprendizado,
@@ -94,16 +95,33 @@ const salvarChecklist = async (req, res) => {
         .status(403)
         .json({ mensagem: "Consulta não encontrada ou sem permissão." });
     }
-    // aqui é a verificaco de duplicidade ou seja cada consulta so vai ter uma check list, se tentar cadastrar duas, vai retornar 401 e dar erro
+    // regra do fluxo clinico:
+    // - o pré-checklist do responsavel serve apenas de triagem para a secretaria
+    // - a avaliacao oficial é a do medico, que SUBSTITUI o pré-checklist
+    // - ninguem refaz a propria avaliacao (responsavel 1x, medico 1x)
+    const quemPreenche =
+      req.usuario.perfil === "responsavel" ? "responsavel" : "medico";
+
     const [existente] = await pool.query(
-      "SELECT id FROM checklist WHERE consulta_id = ?",
+      "SELECT id, preenchido_por FROM checklist WHERE consulta_id = ?",
       [consulta_id],
     );
 
+    let substituiPre = false;
     if (existente.length > 0) {
-      return res
-        .status(409)
-        .json({ mensagem: "Checklist já cadastrado para essa consulta." });
+      if (existente[0].preenchido_por === "medico") {
+        return res.status(409).json({
+          mensagem: "Avaliação clínica já realizada para essa consulta.",
+        });
+      }
+      if (quemPreenche === "responsavel") {
+        return res.status(409).json({
+          mensagem: "Pré-checklist já enviado para essa consulta.",
+        });
+      }
+      // existe um pré-checklist do responsavel e quem preenche agora é o medico:
+      // a avaliacao clinica oficial substitui a triagem
+      substituiPre = true;
     }
 
     // busca o sexo do paciente (define qual coluna de pesos e qual limiar usar - RF11/RF12/RNF16)
@@ -141,8 +159,46 @@ const salvarChecklist = async (req, res) => {
       sexo,
     );
 
-    await pool.query(
-      `INSERT INTO checklist (
+    const valoresSintomas = [
+      respostas.sin_atraso_fala,
+      respostas.sin_dif_aprendizado,
+      respostas.sin_deficit_atencao,
+      respostas.sin_def_intelectual,
+      respostas.sin_hiperatividade,
+      respostas.sin_agressividade,
+      respostas.sin_evita_contato_visual,
+      respostas.sin_evita_contato_fisico,
+      respostas.sin_movimentos_repetitivos,
+      respostas.sin_frouxidao,
+      respostas.sin_macroquidia,
+      respostas.sin_face_alongada,
+    ];
+
+    if (substituiPre) {
+      // o medico assume a avaliacao: sobrescreve as respostas do pré-checklist
+      // (a trigger BEFORE UPDATE recalcula o score_total automaticamente)
+      await pool.query(
+        `UPDATE checklist SET
+                preenchido_por = 'medico', observacoes = ?,
+                sin_atraso_fala = ?, sin_dif_aprendizado = ?, sin_deficit_atencao = ?,
+                sin_def_intelectual = ?, sin_hiperatividade = ?, sin_agressividade = ?,
+                sin_evita_contato_visual = ?, sin_evita_contato_fisico = ?,
+                sin_movimentos_repetitivos = ?, sin_frouxidao = ?,
+                sin_macroquidia = ?, sin_face_alongada = ?,
+                score_ponderado = ?, limiar_usado = ?, encaminhamento = ?
+            WHERE consulta_id = ?`,
+        [
+          observacoes || null,
+          ...valoresSintomas,
+          score_ponderado,
+          limiar_usado,
+          encaminhamento,
+          consulta_id,
+        ],
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO checklist (
                 consulta_id, preenchido_por, observacoes,
                 sin_atraso_fala, sin_dif_aprendizado, sin_deficit_atencao,
                 sin_def_intelectual, sin_hiperatividade, sin_agressividade,
@@ -151,34 +207,28 @@ const salvarChecklist = async (req, res) => {
                 sin_macroquidia, sin_face_alongada,
                 score_ponderado, limiar_usado, encaminhamento
             ) VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        consulta_id,
-        preenchido_por || "medico",
-        observacoes || null,
-        respostas.sin_atraso_fala,
-        respostas.sin_dif_aprendizado,
-        respostas.sin_deficit_atencao,
-        respostas.sin_def_intelectual,
-        respostas.sin_hiperatividade,
-        respostas.sin_agressividade,
-        respostas.sin_evita_contato_visual,
-        respostas.sin_evita_contato_fisico,
-        respostas.sin_movimentos_repetitivos,
-        respostas.sin_frouxidao,
-        respostas.sin_macroquidia,
-        respostas.sin_face_alongada,
-        score_ponderado,
-        limiar_usado,
-        encaminhamento,
-      ],
-    );
+        [
+          consulta_id,
+          quemPreenche,
+          observacoes || null,
+          ...valoresSintomas,
+          score_ponderado,
+          limiar_usado,
+          encaminhamento,
+        ],
+      );
+    }
     // score_total é calculado pela trigger do banco (soma simples 0-12)
     const [resultado] = await pool.query(
       "SELECT score_total, score_ponderado, limiar_usado, encaminhamento FROM checklist WHERE consulta_id = ?",
       [consulta_id],
     );
 
-    await registrarLog(req.usuario, "checklist_salvo", `consulta_id=${consulta_id}, score_ponderado=${score_ponderado}, encaminhamento=${encaminhamento}`);
+    await registrarLog(
+      req.usuario,
+      substituiPre ? "checklist_medico_substituiu_pre" : "checklist_salvo",
+      `consulta_id=${consulta_id}, score_ponderado=${score_ponderado}, encaminhamento=${encaminhamento}`,
+    );
 
     // o responsavel nao pode ver score nem encaminhamento (regra do requisito),
     // entao para ele devolvemos apenas a confirmacao de envio
@@ -190,7 +240,9 @@ const salvarChecklist = async (req, res) => {
     }
 
     return res.status(201).json({
-      mensagem: "Checklist salvo com sucesso.",
+      mensagem: substituiPre
+        ? "Avaliação clínica registrada (substituiu o pré-checklist de triagem)."
+        : "Checklist salvo com sucesso.",
       consulta_id: Number(consulta_id),
       score_total: resultado[0].score_total,
       score_ponderado: resultado[0].score_ponderado,

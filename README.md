@@ -112,7 +112,7 @@ CONTROLLERS/AUTENTICADOR.JS:
 responsável pela lógica de login e cadastro de responsável. recebe email e senha, busca o usuário no banco, compara a senha com o hash e devolve um token jwt se tudo estiver certo. toda tentativa de login (sucesso, senha errada ou email inexistente) é registrada na trilha de auditoria.
 
 CONTROLLERS/USUARIOS.JS:
-crud de médicos e secretaria. funcionalidades prontas e testadas: cadastrar médico ou secretaria (apenas admin), listar médicos ativos (apenas admin), editar dados do médico, desativar médico transferindo pacientes e consultas para outro médico antes de desativar, e atualizar foto do médico.
+crud de médicos e secretárias, em áreas separadas no painel admin. funcionalidades: cadastrar médico (com crm/especialidade), cadastrar secretária (sem crm), listar médicos ativos, listar secretárias ativas, editar dados do médico, desativar médico transferindo pacientes e consultas para outro médico antes de desativar, desativar secretária (mantém o registro para auditoria), e atualizar foto do médico. contas desativadas são bloqueadas no login.
 
 CONTROLLERS/PACIENTES.JS:
 gestão de pacientes. funcionalidades prontas e testadas: cadastrar paciente com todos os campos do formulário real do eu digo x, listar pacientes por perfil (admin e secretaria veem todos, médico vê apenas os seus), buscar paciente por cpf, e atualizar foto do paciente.
@@ -148,11 +148,14 @@ ROTAS DA API:
 POST   /api/auth/login                    login (público)
 POST   /api/auth/cadastro-responsavel     cadastro de responsável (público)
 
-POST   /api/usuarios                      cadastrar médico/secretaria (admin)
+POST   /api/usuarios                      cadastrar médico (admin)
 GET    /api/usuarios                      listar médicos ativos (admin/secretaria)
 PUT    /api/usuarios/:id                  editar médico (admin)
-PATCH  /api/usuarios/:id/desativar        desativar médico (admin)
+PATCH  /api/usuarios/:id/desativar        desativar médico transferindo pacientes (admin)
 PATCH  /api/usuarios/:id/foto             atualizar foto (autenticado)
+POST   /api/usuarios/secretaria           cadastrar secretária (admin)
+GET    /api/usuarios/secretarias          listar secretárias ativas (admin)
+PATCH  /api/usuarios/:id/desativar-secretaria  desativar secretária (admin)
 
 POST   /api/pacientes                     cadastrar paciente (autenticado)
 GET    /api/pacientes                     listar pacientes (autenticado)
@@ -214,11 +217,13 @@ PÁGINAS:
 - CadastroResponsavel.jsx: cadastro público de responsáveis.
 - Home.jsx: tela inicial pós-login.
 - Cadastro.jsx: cadastro completo do paciente (formulário do eu digo x).
+- Pacientes.jsx: lista de pacientes com busca instantânea por nome ou CPF (cada perfil vê o que tem permissão).
 - Checklist.jsx: preenchimento do checklist de 12 sintomas. ao salvar, mostra o score total, e (para médico/admin/secretaria) o score ponderado com uma barra visual indicando a posição em relação ao limiar.
 - Laudo.jsx: exibição do laudo de uma consulta, com score total, score ponderado, limiar, encaminhamento, gráfico de evolução do score ponderado do paciente ao longo do tempo (quando há mais de uma avaliação) e botão para baixar o pdf.
 - Laudos.jsx: lista de consultas com laudo disponível.
 - Secretaria.jsx: fila de pré-checklists e direcionamento de pacientes para médicos.
-- AdminMedicos.jsx: cadastro/edição/desativação de médicos e secretárias.
+- AdminMedicos.jsx: cadastro/edição/desativação de médicos (com transferência de pacientes).
+- AdminSecretarias.jsx: cadastro e desativação de secretárias, em área própria separada dos médicos.
 - Relatorios.jsx: painel administrativo com cards de totais, gráfico de pizza (distribuição de encaminhamentos), gráfico de linha (evolução mensal), gráfico de barras (score ponderado médio por sexo e avaliações por médico), exportação de csv e (admin) trilha de auditoria.
 
 ROTAS (App.jsx):

@@ -156,6 +156,44 @@ const cadastrarSecretaria = async (req, res) => {
   }
 };
 
+// lista as secretarias ativas para a tela de administracao de secretarias
+const listarSecretarias = async (req, res) => {
+  try {
+    const [secretarias] = await pool.query(
+      'SELECT id, nome, email, criado_em FROM usuarios WHERE perfil = "secretaria" AND ativo = 1',
+    );
+
+    return res.status(200).json(secretarias);
+  } catch (erro) {
+    console.error("Erro ao listar secretárias:", erro);
+    return res.status(500).json({ mensagem: "Erro interno do servidor." });
+  }
+};
+
+// desativa uma secretaria (mantem o registro para preservar o historico,
+// igual fazemos com os medicos, mas aqui nao tem pacientes para transferir)
+const desativarSecretaria = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [secretaria] = await pool.query(
+      'SELECT id FROM usuarios WHERE id = ? AND perfil = "secretaria" AND ativo = 1',
+      [id],
+    );
+
+    if (secretaria.length === 0) {
+      return res.status(404).json({ mensagem: "Secretária não encontrada." });
+    }
+
+    await pool.query("UPDATE usuarios SET ativo = 0 WHERE id = ?", [id]);
+
+    return res.status(200).json({ mensagem: "Secretária desativada com sucesso." });
+  } catch (erro) {
+    console.error("Erro ao desativar secretária:", erro);
+    return res.status(500).json({ mensagem: "Erro interno do servidor." });
+  }
+};
+
 const atualizarFotoMedico = async (req, res) => {
     const { id } = req.params;
 
@@ -202,4 +240,6 @@ module.exports = {
   desativarMedico,
   atualizarFotoMedico,
   cadastrarSecretaria,
+  listarSecretarias,
+  desativarSecretaria,
 };

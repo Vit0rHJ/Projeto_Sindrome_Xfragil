@@ -12,6 +12,7 @@ import Laudo from './pages/Laudo'
 import Laudos from './pages/Laudos'
 import Secretaria from './pages/Secretaria'
 import AdminMedicos from './pages/AdminMedicos'
+import AdminSecretarias from './pages/AdminSecretarias'
 import Relatorios from './pages/Relatorios'
 // o Privateroute, serve como componente de protecao , antes de renderizar qualquer pagina protegida, ele vai verificar se existe um token valido no localstorage, se nao tiver manda devolta para o login, se apenasAdmin for true, verifica tambem  se o perfil é admin
 function PrivateRoute({ children, apenasAdmin = false }) {
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/laudo/:consulta_id" element={<Laudo />} />  
           <Route path="/laudos" element={<Laudos />} />
           <Route path="/admin/medicos" element={<PrivateRoute apenasAdmin><AdminMedicos /></PrivateRoute>} />
+          <Route path="/admin/secretarias" element={<PrivateRoute apenasAdmin><AdminSecretarias /></PrivateRoute>} />
           <Route path="/secretaria" element={<Secretaria />} />
           <Route path="/relatorios" element={<Relatorios />} />
         </Route>

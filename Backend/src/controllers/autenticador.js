@@ -34,6 +34,12 @@ const login = async (req, res) => {
 
     const usuario = rows[0];
 
+    // conta desativada (medico/secretaria que saiu da clinica) nao pode mais entrar
+    if (!usuario.ativo) {
+      await registrarLog(usuario, "login_falhou", `email=${email} (conta desativada)`);
+      return res.status(401).json({ mensagem: "Conta desativada. Procure o administrador." });
+    }
+
     const senhaCorreta = await bcrypt.compare(senha, usuario.senha_hash); //compara a senha digitada com o hash salvo, no banco a senha nao é salva como texto éla é salva em hash, isso faz a comparacao correta
 
     if (!senhaCorreta) {

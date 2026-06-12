@@ -147,6 +147,7 @@ export default function Layout() {
 
   const adminItems = [
     { label: "Médicos", path: "/admin/medicos", perfis: ["admin"] },
+    { label: "Secretárias", path: "/admin/secretarias", perfis: ["admin"] },
     {
       label: "Secretaria",
       path: "/secretaria",

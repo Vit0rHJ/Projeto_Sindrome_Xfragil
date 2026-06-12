@@ -110,8 +110,8 @@ const s = {
     color: "#1a6fff",
     flexShrink: 0,
   },
-  medNome: { fontSize: 13, fontWeight: 600, color: "#0a0a0a" },
-  medInfo: { fontSize: 10, color: "#aaa", marginTop: 2 },
+  secNome: { fontSize: 13, fontWeight: 600, color: "#0a0a0a" },
+  secInfo: { fontSize: 10, color: "#aaa", marginTop: 2 },
   cardBar: {
     position: "absolute",
     bottom: 0,
@@ -119,18 +119,6 @@ const s = {
     right: 0,
     height: 2,
     background: "#e8e8e8",
-  },
-  actions: { display: "flex", gap: 8 },
-  btnEdit: {
-    fontSize: 9,
-    letterSpacing: 1,
-    padding: "4px 12px",
-    border: "1px solid #0a0a0a",
-    color: "#0a0a0a",
-    background: "#fff",
-    cursor: "pointer",
-    textTransform: "uppercase",
-    fontFamily: "'Space Grotesk', sans-serif",
   },
   btnDeact: {
     fontSize: 9,
@@ -159,7 +147,6 @@ const s = {
     padding: "8px 12px",
     marginBottom: 12,
   },
-  // o overlay é um fundo escuro atras  do modal, cobrindo a tela
   overlay: {
     position: "fixed",
     inset: 0,
@@ -188,29 +175,26 @@ const s = {
   },
 };
 
-export default function AdminMedicos() {
-  const [medicos, setMedicos] = useState([]);
-  const [form, setForm] = useState({
-    nome: "",
-    email: "",
-    senha: "",
-    crm: "",
-    especialidade: "",
-  });
+function formatDate(d) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("pt-BR");
+}
+
+export default function AdminSecretarias() {
+  const [secretarias, setSecretarias] = useState([]);
+  const [form, setForm] = useState({ nome: "", email: "", senha: "" });
   const [msg, setMsg] = useState("");
   const [erro, setErro] = useState("");
   const [loading, setLoading] = useState(false);
-  const [editando, setEditando] = useState(null); // aguarda o medico que esta sendo editado, quando clicarmos em editar, vai abrir o modal preenchido com os dados dele
-  const [desativando, setDesativando] = useState(null); // aguarda o medico que vai ser desativado, o modal vai pedir para selecionar o medico que vai assumir os pacientes
-  const [novoMedicoId, setNovoMedicoId] = useState("");
+  const [desativando, setDesativando] = useState(null);
 
   useEffect(() => {
-    carregarMedicos();
+    carregarSecretarias();
   }, []);
 
-  async function carregarMedicos() {
-    const { data } = await api.get("/usuarios");
-    setMedicos(data);
+  async function carregarSecretarias() {
+    const { data } = await api.get("/usuarios/secretarias");
+    setSecretarias(data);
   }
 
   function handleChange(e) {
@@ -223,10 +207,10 @@ export default function AdminMedicos() {
     setMsg("");
     setLoading(true);
     try {
-      await api.post("/usuarios", form);
-      setMsg("Médico cadastrado com sucesso.");
-      setForm({ nome: "", email: "", senha: "", crm: "", especialidade: "" });
-      carregarMedicos();
+      await api.post("/usuarios/secretaria", form);
+      setMsg("Secretária cadastrada com sucesso.");
+      setForm({ nome: "", email: "", senha: "" });
+      carregarSecretarias();
     } catch (err) {
       setErro(err.response?.data?.mensagem || "Erro ao cadastrar.");
     } finally {
@@ -234,42 +218,14 @@ export default function AdminMedicos() {
     }
   }
 
-  async function handleEditar(e) {
-    e.preventDefault();
-    setErro("");
-    setMsg("");
-    setLoading(true);
-    try {
-      await api.put(`/usuarios/${editando.id}`, {
-        nome: editando.nome,
-        crm: editando.crm,
-        especialidade: editando.especialidade,
-      });
-      setMsg("Médico atualizado.");
-      setEditando(null);
-      carregarMedicos();
-    } catch (err) {
-      setErro(err.response?.data?.mensagem || "Erro ao editar.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function handleDesativar() {
-    if (!novoMedicoId) {
-      setErro("Selecione o médico que vai assumir os pacientes.");
-      return;
-    }
     setErro("");
     setLoading(true);
     try {
-      await api.patch(`/usuarios/${desativando.id}/desativar`, {
-        novo_medico_id: Number(novoMedicoId),
-      });
-      setMsg("Médico desativado e pacientes transferidos.");
+      await api.patch(`/usuarios/${desativando.id}/desativar-secretaria`);
+      setMsg("Secretária desativada com sucesso.");
       setDesativando(null);
-      setNovoMedicoId("");
-      carregarMedicos();
+      carregarSecretarias();
     } catch (err) {
       setErro(err.response?.data?.mensagem || "Erro ao desativar.");
     } finally {
@@ -282,17 +238,17 @@ export default function AdminMedicos() {
       <div style={s.left}>
         <div style={s.corner}></div>
         <div style={s.eye}>administração</div>
-        <div style={s.title}>Cadastrar Médico</div>
+        <div style={s.title}>Cadastrar Secretária</div>
 
         {msg && <div style={s.success}>{msg}</div>}
-        {erro && <div style={s.error}>{erro}</div>}
+        {erro && !desativando && <div style={s.error}>{erro}</div>}
 
         <form onSubmit={handleCadastrar}>
           <label style={s.label}>Nome completo *</label>
           <input
             style={s.input}
             name="nome"
-            placeholder="Dr(a). Nome Sobrenome"
+            placeholder="Nome Sobrenome"
             value={form.nome}
             onChange={handleChange}
             required
@@ -317,104 +273,49 @@ export default function AdminMedicos() {
             onChange={handleChange}
             required
           />
-          <label style={s.label}>CRM *</label>
-          <input
-            style={s.input}
-            name="crm"
-            placeholder="CRM/UF 000000"
-            value={form.crm}
-            onChange={handleChange}
-            required
-          />
-          <label style={s.label}>Especialidade</label>
-          <input
-            style={s.input}
-            name="especialidade"
-            placeholder="Ex: Neuropediatria"
-            value={form.especialidade}
-            onChange={handleChange}
-          />
 
           <button style={s.btn} type="submit" disabled={loading}>
-            {loading ? "Salvando..." : "Cadastrar Médico"}
+            {loading ? "Salvando..." : "Cadastrar Secretária"}
             <div style={s.btnBar}></div>
           </button>
         </form>
       </div>
 
       <div style={s.right}>
-        <div style={s.eye}>lista de médicos</div>
-        <div style={s.rtitle}>Médicos Ativos ({medicos.length})</div>
+        <div style={s.eye}>equipe administrativa</div>
+        <div style={s.rtitle}>Secretárias Ativas ({secretarias.length})</div>
 
-        {medicos.map((m) => (
-          <div key={m.id} style={s.card}>
-            <div style={s.cardTop}>
-              <div style={s.avc}>{m.nome?.[0]?.toUpperCase()}</div>
-              <div>
-                <div style={s.medNome}>{m.nome}</div>
-                <div style={s.medInfo}>
-                  {m.crm} · {m.especialidade} · {m.email}
+        {secretarias.length === 0 ? (
+          <div style={{ fontSize: 12, color: "#aaa", fontStyle: "italic" }}>
+            Nenhuma secretária cadastrada
+          </div>
+        ) : (
+          secretarias.map((sec) => (
+            <div key={sec.id} style={s.card}>
+              <div style={s.cardTop}>
+                <div style={s.avc}>{sec.nome?.[0]?.toUpperCase()}</div>
+                <div>
+                  <div style={s.secNome}>{sec.nome}</div>
+                  <div style={s.secInfo}>
+                    {sec.email} · desde {formatDate(sec.criado_em)}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div style={s.actions}>
-              <button style={s.btnEdit} onClick={() => setEditando({ ...m })}>
-                Editar
-              </button>
               <button
                 style={s.btnDeact}
                 onClick={() => {
-                  setDesativando(m);
+                  setDesativando(sec);
                   setErro("");
+                  setMsg("");
                 }}
               >
                 Desativar
               </button>
+              <div style={s.cardBar}></div>
             </div>
-            <div style={s.cardBar}></div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
-
-      {editando && (
-        <div style={s.overlay}>
-          <div style={s.modal}>
-            <button style={s.modalClose} onClick={() => setEditando(null)}>
-              ✕
-            </button>
-            <div style={s.modalTitle}>Editar Médico</div>
-            <form onSubmit={handleEditar}>
-              <label style={s.label}>Nome</label>
-              <input
-                style={s.input}
-                value={editando.nome}
-                onChange={(e) =>
-                  setEditando({ ...editando, nome: e.target.value })
-                }
-              />
-              <label style={s.label}>CRM</label>
-              <input
-                style={s.input}
-                value={editando.crm}
-                onChange={(e) =>
-                  setEditando({ ...editando, crm: e.target.value })
-                }
-              />
-              <label style={s.label}>Especialidade</label>
-              <input
-                style={s.input}
-                value={editando.especialidade}
-                onChange={(e) =>
-                  setEditando({ ...editando, especialidade: e.target.value })
-                }
-              />
-              <button style={s.btn} type="submit" disabled={loading}>
-                Salvar alterações<div style={s.btnBar}></div>
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
 
       {desativando && (
         <div style={s.overlay}>
@@ -422,27 +323,12 @@ export default function AdminMedicos() {
             <button style={s.modalClose} onClick={() => setDesativando(null)}>
               ✕
             </button>
-            <div style={s.modalTitle}>Desativar Médico</div>
+            <div style={s.modalTitle}>Desativar Secretária</div>
             <div style={{ fontSize: 12, color: "#555", marginBottom: 16 }}>
-              Os pacientes de <strong>{desativando.nome}</strong> serão
-              transferidos para o médico selecionado.
+              <strong>{desativando.nome}</strong> perderá o acesso ao sistema.
+              O registro é mantido para fins de auditoria.
             </div>
             {erro && <div style={s.error}>{erro}</div>}
-            <label style={s.label}>Médico que vai assumir</label>
-            <select
-              style={s.input}
-              value={novoMedicoId}
-              onChange={(e) => setNovoMedicoId(e.target.value)}
-            >
-              <option value="">Selecione um médico</option>
-              {medicos
-                .filter((m) => m.id !== desativando.id)
-                .map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.nome} — {m.crm}
-                  </option>
-                ))}
-            </select>
             <button
               style={{ ...s.btn, background: "#e8a020" }}
               onClick={handleDesativar}

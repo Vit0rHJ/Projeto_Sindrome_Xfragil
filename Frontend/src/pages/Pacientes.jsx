@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { getUser, UPLOADS_URL } from "../services/api";
+import { maskCpf, maskTelefone, validarCpf, validarTelefone } from "../utils/formatos";
 
 const s = {
   wrap: { padding: "28px 32px", overflow: "auto", height: "calc(100vh - 62px)", background: "#fff" },
@@ -31,6 +32,23 @@ const s = {
     fontSize: 9, fontWeight: 700, color: "#1a6fff", flexShrink: 0,
   },
   idade: { fontSize: 9, color: "#aaa", marginLeft: 6 },
+  acao: { color: "#1a6fff", cursor: "pointer", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" },
+  // modal de edicao
+  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20 },
+  modal: { background: "#fff", padding: 28, width: 620, maxWidth: "100%", maxHeight: "90vh", overflow: "auto", position: "relative" },
+  modalTitle: { fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, letterSpacing: 2, marginBottom: 4 },
+  modalSub: { fontSize: 10, color: "#999", letterSpacing: 1, marginBottom: 18 },
+  modalClose: { position: "absolute", top: 12, right: 16, background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#aaa" },
+  formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 18px" },
+  field: { marginBottom: 14 },
+  label: { display: "block", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#888", marginBottom: 5 },
+  input: { width: "100%", padding: "9px 11px", border: "1px solid #e0e0e0", fontSize: 12, color: "#0a0a0a", background: "#fafafa", outline: "none" },
+  secTitle: { gridColumn: "1 / -1", fontSize: 9, letterSpacing: 3, textTransform: "uppercase", color: "#0a0a0a", margin: "8px 0 12px", paddingBottom: 6, borderBottom: "1px solid #e8e8e8", display: "flex", alignItems: "center", gap: 8 },
+  secDot: { width: 6, height: 6, borderRadius: "50%", background: "#1a6fff" },
+  modalFooter: { display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 },
+  btnCancel: { fontSize: 9, letterSpacing: 2, padding: "9px 16px", border: "1px solid #e0e0e0", color: "#888", background: "#fff", cursor: "pointer", textTransform: "uppercase", fontFamily: "'Space Grotesk', sans-serif" },
+  btnSave: { fontSize: 9, letterSpacing: 2, padding: "9px 20px", border: "none", color: "#fff", background: "#0a0a0a", cursor: "pointer", textTransform: "uppercase", fontFamily: "'Space Grotesk', sans-serif", position: "relative" },
+  erroBox: { gridColumn: "1 / -1", background: "#fff0f0", border: "1px solid #ffcccc", color: "#cc0000", fontSize: 11, padding: "8px 12px", marginBottom: 8 },
 };
 
 function formatDate(d) {
@@ -56,10 +74,63 @@ export default function Pacientes() {
   const [loading, setLoading] = useState(true);
   const fileRef = useRef(null);
   const [fotoPacienteId, setFotoPacienteId] = useState(null);
+  const [editando, setEditando] = useState(null); // paciente completo em edicao
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+  const [erroEdicao, setErroEdicao] = useState("");
 
   useEffect(() => {
     carregar();
   }, []);
+
+  // abre o modal de edicao buscando os dados completos do paciente
+  async function abrirEdicao(id) {
+    setErroEdicao("");
+    try {
+      const { data } = await api.get(`/pacientes/${id}`);
+      // normaliza a data para o formato do input type=date (aaaa-mm-dd)
+      const dn = data.data_nascimento ? String(data.data_nascimento).slice(0, 10) : "";
+      setEditando({ ...data, data_nascimento: dn });
+    } catch (err) {
+      alert(err.response?.data?.mensagem || "Erro ao abrir o paciente.");
+    }
+  }
+
+  function alterarCampo(campo, valor) {
+    let v = valor;
+    if (campo === "cpf_responsavel") v = maskCpf(valor);
+    if (["telefone", "telefone_responsavel", "whatsapp", "telefone2"].includes(campo)) v = maskTelefone(valor);
+    setEditando((prev) => ({ ...prev, [campo]: v }));
+  }
+
+  async function salvarEdicao() {
+    setErroEdicao("");
+    if (!editando.nome?.trim()) {
+      setErroEdicao("O nome do paciente é obrigatório.");
+      return;
+    }
+    if (!validarCpf(editando.cpf_responsavel || "")) {
+      setErroEdicao("CPF do responsável inválido. Use 000.000.000-00.");
+      return;
+    }
+    if (!validarTelefone(editando.telefone_responsavel || "")) {
+      setErroEdicao("Telefone do responsável inválido. Use +55 (DD) 9XXXX-XXXX.");
+      return;
+    }
+    if (editando.telefone && !validarTelefone(editando.telefone)) {
+      setErroEdicao("Telefone do paciente inválido. Use +55 (DD) 9XXXX-XXXX.");
+      return;
+    }
+    setSalvandoEdicao(true);
+    try {
+      await api.put(`/pacientes/${editando.id}`, editando);
+      setEditando(null);
+      carregar();
+    } catch (err) {
+      setErroEdicao(err.response?.data?.mensagem || "Erro ao salvar.");
+    } finally {
+      setSalvandoEdicao(false);
+    }
+  }
 
   function carregar() {
     api
@@ -229,14 +300,26 @@ export default function Pacientes() {
                     </td>
                     <td style={s.td}>{p.telefone || "—"}</td>
                     <td style={s.td}>{p.email || "—"}</td>
-                    <td
-                      style={{ ...s.td, color: "#1a6fff", cursor: "pointer", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}
-                      onClick={(e) => {
-                        e.stopPropagation(); // nao deixa o clique da foto abrir o laudo
-                        escolherFoto(p.id);
-                      }}
-                    >
-                      {p.foto ? "Trocar foto" : "+ Foto"}
+                    <td style={{ ...s.td, whiteSpace: "nowrap" }}>
+                      <span
+                        style={s.acao}
+                        onClick={(e) => {
+                          e.stopPropagation(); // nao deixa o clique abrir o laudo
+                          abrirEdicao(p.id);
+                        }}
+                      >
+                        Editar
+                      </span>
+                      <span style={{ color: "#ddd", margin: "0 8px" }}>·</span>
+                      <span
+                        style={s.acao}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          escolherFoto(p.id);
+                        }}
+                      >
+                        {p.foto ? "Trocar foto" : "+ Foto"}
+                      </span>
                     </td>
                   </tr>
                 );
@@ -244,6 +327,96 @@ export default function Pacientes() {
             )}
           </tbody>
         </table>
+      )}
+
+      {editando && (
+        <div style={s.overlay} onClick={() => setEditando(null)}>
+          <div style={s.modal} onClick={(e) => e.stopPropagation()}>
+            <button style={s.modalClose} onClick={() => setEditando(null)}>✕</button>
+            <div style={s.modalTitle}>Editar Paciente</div>
+            <div style={s.modalSub}>
+              CPF do paciente ({editando.cpf}) não é editável — é a identidade do registro
+            </div>
+
+            <div style={s.formGrid}>
+              {erroEdicao && <div style={s.erroBox}>{erroEdicao}</div>}
+
+              <div style={s.secTitle}><span style={s.secDot}></span>Dados do Paciente</div>
+              <div style={s.field}>
+                <label style={s.label}>Nome completo *</label>
+                <input style={s.input} value={editando.nome || ""} onChange={(e) => alterarCampo("nome", e.target.value)} />
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>Data de nascimento</label>
+                <input style={s.input} type="date" value={editando.data_nascimento || ""} onChange={(e) => alterarCampo("data_nascimento", e.target.value)} />
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>Sexo</label>
+                <select style={s.input} value={editando.sexo || ""} onChange={(e) => alterarCampo("sexo", e.target.value)}>
+                  <option value="">Selecione</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Feminino</option>
+                </select>
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>E-mail</label>
+                <input style={s.input} type="email" value={editando.email || ""} onChange={(e) => alterarCampo("email", e.target.value)} />
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>Telefone</label>
+                <input style={s.input} value={editando.telefone || ""} onChange={(e) => alterarCampo("telefone", e.target.value)} placeholder="+55 (DD) 9XXXX-XXXX" />
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>Nome da mãe</label>
+                <input style={s.input} value={editando.nome_mae || ""} onChange={(e) => alterarCampo("nome_mae", e.target.value)} />
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>Nome do pai</label>
+                <input style={s.input} value={editando.nome_pai || ""} onChange={(e) => alterarCampo("nome_pai", e.target.value)} />
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>Cidade</label>
+                <input style={s.input} value={editando.cidade || ""} onChange={(e) => alterarCampo("cidade", e.target.value)} />
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>Estado (UF)</label>
+                <input style={s.input} value={editando.estado || ""} onChange={(e) => alterarCampo("estado", e.target.value)} maxLength={2} />
+              </div>
+
+              <div style={s.secTitle}><span style={s.secDot}></span>Dados do Responsável</div>
+              <div style={s.field}>
+                <label style={s.label}>Nome do responsável *</label>
+                <input style={s.input} value={editando.nome_responsavel || ""} onChange={(e) => alterarCampo("nome_responsavel", e.target.value)} />
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>CPF do responsável *</label>
+                <input style={s.input} value={editando.cpf_responsavel || ""} onChange={(e) => alterarCampo("cpf_responsavel", e.target.value)} placeholder="000.000.000-00" />
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>Telefone do responsável *</label>
+                <input style={s.input} value={editando.telefone_responsavel || ""} onChange={(e) => alterarCampo("telefone_responsavel", e.target.value)} placeholder="+55 (DD) 9XXXX-XXXX" />
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>Grau de parentesco</label>
+                <select style={s.input} value={editando.grau_parentesco || ""} onChange={(e) => alterarCampo("grau_parentesco", e.target.value)}>
+                  <option value="">Selecione</option>
+                  <option value="mae">Mãe</option>
+                  <option value="pai">Pai</option>
+                  <option value="avo">Avó / Avô</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={s.modalFooter}>
+              <button style={s.btnCancel} onClick={() => setEditando(null)}>Cancelar</button>
+              <button style={s.btnSave} onClick={salvarEdicao} disabled={salvandoEdicao}>
+                {salvandoEdicao ? "Salvando..." : "Salvar alterações"}
+                <div style={s.btnBar}></div>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

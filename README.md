@@ -241,3 +241,8 @@ clicar em um paciente na página Pacientes abre o laudo/situação da avaliaçã
 
 ROTAS (App.jsx):
 "/" e "/cadastro-responsavel" são públicas. todas as demais ficam dentro de <PrivateRoute><Layout/></PrivateRoute>, que redireciona para o login se não houver token válido. "/admin/medicos" exige especificamente o perfil admin.
+
+
+LICENÇA:
+
+este projeto é distribuído sob a licença MIT (ver arquivo LICENSE na raiz do repositório). você pode usar, copiar, modificar e distribuir o código livremente, desde que mantenha o aviso de copyright. © 2026 Vitor Juliatto e Matteo Dias Silvestre.

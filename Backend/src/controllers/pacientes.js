@@ -133,6 +133,110 @@ const buscarPorCpf = async (req, res) => {
         return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
     }
 };
+// busca um paciente completo por id (usado para preencher o formulario de
+// edicao). respeita a mesma regra de acesso da edicao.
+const buscarPorId = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [paciente] = await pool.query(
+            'SELECT * FROM pacientes WHERE id = ?',
+            [id]
+        );
+
+        if (paciente.length === 0) {
+            return res.status(404).json({ mensagem: 'Paciente não encontrado.' });
+        }
+
+        const p = paciente[0];
+        const perfil = req.usuario.perfil;
+        const ehDono =
+            perfil === 'admin' ||
+            perfil === 'secretaria' ||
+            p.medico_id === req.usuario.id ||
+            p.responsavel_id === req.usuario.id;
+
+        if (!ehDono) {
+            return res.status(403).json({ mensagem: 'Você não tem permissão para acessar este paciente.' });
+        }
+
+        return res.status(200).json(p);
+    } catch (erro) {
+        console.error('Erro ao buscar paciente:', erro);
+        return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
+    }
+};
+
+// RF08 - edita os dados cadastrais de um paciente. O CPF do paciente nao é
+// editavel por ser a identidade do registro; os demais campos podem ser
+// atualizados. Mesma regra de acesso da foto (admin/secretaria qualquer um,
+// medico/responsavel apenas os seus).
+const editarPaciente = async (req, res) => {
+    const { id } = req.params;
+    const {
+        nome, data_nascimento, sexo, nome_mae, nome_pai,
+        email, telefone, whatsapp, telefone2, cidade, estado, pais,
+        nome_responsavel, cpf_responsavel, telefone_responsavel, grau_parentesco
+    } = req.body;
+
+    if (!nome || !nome_responsavel || !cpf_responsavel || !telefone_responsavel) {
+        return res.status(400).json({ mensagem: 'Nome e dados do responsável são obrigatórios.' });
+    }
+    if (!CPF_REGEX.test(cpf_responsavel)) {
+        return res.status(400).json({ mensagem: 'CPF do responsável deve estar no formato 000.000.000-00.' });
+    }
+    if (!CELULAR_REGEX.test(telefone_responsavel)) {
+        return res.status(400).json({ mensagem: 'Telefone do responsável deve ser um celular no formato +55 (DD) 9XXXX-XXXX.' });
+    }
+    for (const [campo, valor] of [['telefone', telefone], ['whatsapp', whatsapp], ['telefone2', telefone2]]) {
+        if (valor && !CELULAR_REGEX.test(valor)) {
+            return res.status(400).json({ mensagem: `O campo ${campo} deve ser um celular no formato +55 (DD) 9XXXX-XXXX.` });
+        }
+    }
+
+    try {
+        const [paciente] = await pool.query(
+            'SELECT medico_id, responsavel_id FROM pacientes WHERE id = ?',
+            [id]
+        );
+
+        if (paciente.length === 0) {
+            return res.status(404).json({ mensagem: 'Paciente não encontrado.' });
+        }
+
+        const perfil = req.usuario.perfil;
+        const ehDono =
+            perfil === 'admin' ||
+            perfil === 'secretaria' ||
+            paciente[0].medico_id === req.usuario.id ||
+            paciente[0].responsavel_id === req.usuario.id;
+
+        if (!ehDono) {
+            return res.status(403).json({ mensagem: 'Você não tem permissão para editar este paciente.' });
+        }
+
+        await pool.query(
+            `UPDATE pacientes SET
+                nome = ?, data_nascimento = ?, sexo = ?, nome_mae = ?, nome_pai = ?,
+                email = ?, telefone = ?, whatsapp = ?, telefone2 = ?, cidade = ?, estado = ?, pais = ?,
+                nome_responsavel = ?, cpf_responsavel = ?, telefone_responsavel = ?, grau_parentesco = ?
+             WHERE id = ?`,
+            [
+                nome, data_nascimento || null, sexo || null, nome_mae || null, nome_pai || null,
+                email || null, telefone || null, whatsapp || null, telefone2 || null,
+                cidade || null, estado || null, pais || 'Brasil',
+                nome_responsavel, cpf_responsavel, telefone_responsavel, grau_parentesco || null,
+                id
+            ]
+        );
+
+        return res.status(200).json({ mensagem: 'Paciente atualizado com sucesso.' });
+    } catch (erro) {
+        console.error('Erro ao editar paciente:', erro);
+        return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
+    }
+};
+
 const atualizarFotoPaciente = async (req, res) => {
     const { id } = req.params;
 
@@ -186,4 +290,4 @@ const atualizarFotoPaciente = async (req, res) => {
         return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
     }
 };
-module.exports = { cadastrarPaciente, listarPacientes, buscarPorCpf,atualizarFotoPaciente };
+module.exports = { cadastrarPaciente, listarPacientes, buscarPorCpf, buscarPorId, editarPaciente, atualizarFotoPaciente };

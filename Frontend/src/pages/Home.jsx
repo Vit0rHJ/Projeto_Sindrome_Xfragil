@@ -197,6 +197,19 @@ const s = {
   },
 };
 
+// traduz o estágio real da consulta para um rótulo + cor, considerando o
+// status (pendente/realizada) e se ela já foi direcionada a um médico de
+// verdade. assim a Home conta a mesma história da página da Secretaria:
+// - Realizada  = o médico já fez a avaliação
+// - Direcionado = encaminhada a um médico, aguardando avaliação
+// - Aguardando  = ainda nas mãos do responsável, sem direcionamento
+function statusConsulta(c) {
+  if (c.status === "realizada") return { label: "Realizada", cor: "#20c850" };
+  if (c.status === "cancelada") return { label: "Cancelada", cor: "#999" };
+  if (c.medico_perfil === "medico") return { label: "Direcionado", cor: "#1a6fff" };
+  return { label: "Aguardando", cor: "#e8a020" };
+}
+
 function formatDate(d) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("pt-BR");
@@ -320,7 +333,23 @@ export default function Home() {
                     </td>
                     <td style={s.td}>{formatDate(c.data_consulta)}</td>
                     <td style={s.td}>
-                      <span style={s.bp}>Pendente</span>
+                      {(() => {
+                        const st = statusConsulta(c);
+                        return (
+                          <span
+                            style={{
+                              display: "inline-block",
+                              fontSize: 8,
+                              letterSpacing: 1,
+                              padding: "2px 8px",
+                              color: st.cor,
+                              border: `1px solid ${st.cor}`,
+                            }}
+                          >
+                            {st.label}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td
                       style={{
@@ -354,7 +383,7 @@ export default function Home() {
               <div style={s.aline}></div>
               <div style={{ flex: 1 }}>
                 <div style={s.an}>{c.paciente_nome}</div>
-                <div style={s.ad}>{c.status}</div>
+                <div style={s.ad}>{statusConsulta(c).label}</div>
               </div>
               <span style={s.atg}>consulta</span>
             </div>

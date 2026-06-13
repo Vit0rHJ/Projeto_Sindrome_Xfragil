@@ -212,12 +212,13 @@ SELECT
     c.data_consulta,
     c.observacoes,
     c.criado_em,
-    p.id   AS paciente_id,
-    p.nome AS paciente_nome,
-    p.cpf  AS paciente_cpf,
-    p.foto AS paciente_foto,
-    m.id   AS medico_id,
-    m.nome AS medico_nome,
+    p.id     AS paciente_id,
+    p.nome   AS paciente_nome,
+    p.cpf    AS paciente_cpf,
+    p.foto   AS paciente_foto,
+    m.id     AS medico_id,
+    m.nome   AS medico_nome,
+    m.perfil AS medico_perfil,
     ch.encaminhamento
 FROM consultas c
 JOIN pacientes p ON p.id = c.paciente_id

@@ -2,6 +2,9 @@
 
 Projeto acadêmico desenvolvido na PUCPR, inspirado no programa Eu Digo X do Instituto Buko Kaesemodel (Curitiba, PR). O sistema permite rastreamento, acompanhamento e gestão de pacientes com suspeita ou diagnóstico de Síndrome do X Frágil, desde o pré-checklist preenchido pelo responsável até a geração do laudo clínico.
 
+Caso queira ver os videos explicativos do nosso trabalho acesse:
+Video 1- https://youtu.be/ABt8jp_KevA
+Video 2- https://youtu.be/KS5mA4O6myU
 GERAL:
 
 os testes do back estão sendo feitos utilizando postman.

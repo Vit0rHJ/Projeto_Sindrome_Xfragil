@@ -176,6 +176,16 @@ const salvarChecklist = async (req, res) => {
       [consulta_id],
     );
 
+    // quando a avaliacao oficial (medico/admin) é salva, a consulta deixa de
+    // estar pendente — antes nada marcava a consulta como realizada e elas
+    // ficavam "Pendente" para sempre nas listagens
+    if (quemPreenche === "medico") {
+      await pool.query(
+        'UPDATE consultas SET status = "realizada" WHERE id = ?',
+        [consulta_id],
+      );
+    }
+
     await registrarLog(
       req.usuario,
       substituiPre ? "checklist_medico_substituiu_pre" : "checklist_salvo",

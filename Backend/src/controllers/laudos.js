@@ -316,8 +316,18 @@ const gerarLaudo = async (req, res) => {
     // zera a margem inferior para o texto do rodapé não disparar
     // a quebra automática de página do pdfkit
     doc.page.margins.bottom = 0;
-    const rodapeY = doc.page.height - 70;
+    const rodapeY = doc.page.height - 82;
     doc.moveTo(50, rodapeY).lineTo(562, rodapeY).strokeColor(CINZA_CLARO).stroke();
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(7)
+      .fillColor("#777777")
+      .text(
+        "Instituto Buko Kaesemodel · Rua Fernando Simas, 172 – Bigorrilho, Curitiba-PR · (41) 3156-0309 · contato@eudigox.com.br",
+        50,
+        rodapeY + 7,
+        { width: 512, align: "center" },
+      );
     doc
       .font("Helvetica")
       .fontSize(7)
@@ -325,13 +335,13 @@ const gerarLaudo = async (req, res) => {
       .text(
         "Este documento é uma ferramenta de apoio à triagem clínica e não substitui a avaliação médica presencial nem o exame genético confirmatório (PCR/Southern Blot).",
         50,
-        rodapeY + 8,
+        rodapeY + 19,
         { width: 512, align: "center" },
       )
       .text(
-        `Gerado em ${new Date().toLocaleString("pt-BR")} — Eu Digo X · dados protegidos nos termos da LGPD (Lei nº 13.709/2018)`,
+        `Gerado em ${new Date().toLocaleString("pt-BR")} — dados protegidos nos termos da LGPD (Lei nº 13.709/2018) · Encarregada de Dados: Luz Maria T. Romero Silva (luzmaria@institutobk.org.br)`,
         50,
-        rodapeY + 28,
+        rodapeY + 39,
         { width: 512, align: "center" },
       );
     //aqui ele vai servir pra sinalizar que acabamos de escrever, depois do    fazer a parada dele vai salvar no baco e enviar para o usuario baixar

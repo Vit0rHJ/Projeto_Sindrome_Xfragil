@@ -176,6 +176,35 @@ export default function Login() {
             <div style={s.tagDot}></div>Gestão de pacientes centralizada
           </div>
         </div>
+
+        {/* contato institucional do Instituto Buko Kaesemodel */}
+        <div
+          style={{
+            marginTop: 36,
+            paddingTop: 18,
+            borderTop: "1px solid #1a1a2e",
+            textAlign: "center",
+            lineHeight: 1.7,
+          }}
+        >
+          <div style={{ fontSize: 10, letterSpacing: 2, color: "#667", textTransform: "uppercase", marginBottom: 6 }}>
+            Instituto Buko Kaesemodel
+          </div>
+          <div style={{ fontSize: 9, color: "#445" }}>
+            Rua Fernando Simas, 172 – Bigorrilho, Curitiba-PR
+          </div>
+          <div style={{ fontSize: 9, color: "#445" }}>
+            (41) 3156-0309 · WhatsApp (41) 99103-4847
+          </div>
+          <div style={{ fontSize: 9, color: "#445" }}>
+            contato@eudigox.com.br
+          </div>
+          <div style={{ fontSize: 8, color: "#334", marginTop: 8 }}>
+            Encarregada de Dados (LGPD): Luz Maria T. Romero Silva
+            <br />
+            luzmaria@institutobk.org.br
+          </div>
+        </div>
       </div>
 
       <div style={s.right}>

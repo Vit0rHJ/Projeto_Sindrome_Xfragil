@@ -142,12 +142,26 @@ const atualizarFotoPaciente = async (req, res) => {
 
     try {
         const [paciente] = await pool.query(
-            'SELECT foto FROM pacientes WHERE id = ?',
+            'SELECT foto, medico_id, responsavel_id FROM pacientes WHERE id = ?',
             [id]
         );
 
         if (paciente.length === 0) {
             return res.status(404).json({ mensagem: 'Paciente não encontrado.' });
+        }
+
+        // controle de acesso: admin e secretaria podem alterar a foto de qualquer
+        // paciente; o medico apenas dos seus; o responsavel apenas dos que cadastrou.
+        // sem isso, qualquer usuario logado conseguiria trocar a foto de qualquer paciente
+        const perfil = req.usuario.perfil;
+        const ehDono =
+            perfil === 'admin' ||
+            perfil === 'secretaria' ||
+            paciente[0].medico_id === req.usuario.id ||
+            paciente[0].responsavel_id === req.usuario.id;
+
+        if (!ehDono) {
+            return res.status(403).json({ mensagem: 'Você não tem permissão para alterar a foto deste paciente.' });
         }
 
         if (paciente[0].foto) {

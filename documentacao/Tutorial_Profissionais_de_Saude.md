@@ -125,4 +125,17 @@ Sim — esse é o fluxo normal. O pré-checklist é só triagem; a avaliação d
 Sim. Basta criar uma nova consulta para o paciente e preencher um novo checklist. O histórico de scores fica disponível no laudo, em forma de gráfico de evolução.
 
 **Os pesos dos sintomas podem mudar?**
-Sim. Os pesos e os limiares ficam armazenados no banco de dados (tabela `sintomas_pesos`) e podem ser ajustados pela equipe técnica conforme novas evidências, sem necessidade de alterar o código do sistema.
+Sim. Os pesos e os limiares ficam armazenados no banco de dados (tabela `sintomas_pesos`) e podem ser ajustados pela equipe técnica conforme novas evidências, sem necessidade de alterar o código do sistema. O administrador também pode adicionar novos sintomas e ajustar a gravidade de cada um pela tela **Sintomas**.
+
+---
+
+## 9. Contato — Instituto Buko Kaesemodel
+
+**Endereço:** Rua Fernando Simas, 172 – Bigorrilho, Curitiba-PR
+**Telefone:** (41) 3156-0309 · **WhatsApp:** (41) 99103-4847
+**E-mail:** contato@eudigox.com.br
+
+**Orientações, solicitações e esclarecimentos sobre a Lei Geral de Proteção de Dados (LGPD):**
+Encarregada de Dados: **Luz Maria T. Romero Silva**
+Telefone: (41) 3156-0309 / (41) 99103-4847
+E-mail: luzmaria@institutobk.org.br
